@@ -1,5 +1,5 @@
-import * as mg from '../modules/mgclient.mjs';
-import factory from './out.js';
+import * as mg from './mgclient.mjs';
+import factory from '../examples/out.js';
 //let mg = require('./mgclient.mjs');
 
 factory().then(async (instance) => {
@@ -10,14 +10,13 @@ factory().then(async (instance) => {
     if(mgClient == null) {
       throw "Could not connect to memgraph!";
     }
-    let query = "CREATE (n:Person { name: 'Kostas', Age: '27' })";
-    let result = await mgClient.execute(instance, query);
-    let res = await mgClient.fetchAll(instance);
+    let result = await mgClient.execute("CREATE (n:Person { name: 'Kostas', Age: '27' })");
+    let res = await mgClient.fetchAll();
     if(res == null) {
       throw "Error while fetching the result";
     }
     console.log("Total rows " + res.length);
-    mgClient.destroySession(instance);
+    mgClient.destroySession();
     mg.mgClientFinalize(instance);
 });
 
