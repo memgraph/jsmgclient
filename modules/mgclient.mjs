@@ -1,4 +1,4 @@
-//import mgclient wasm here
+//import instance from "../examples/out.js"
 
 //todo implement MemoryRegistry
 //todo add another abstraction layer to get rid of passing the instance object
@@ -630,16 +630,16 @@ export class MgPath {
     function copy(instance) {
         wrapped_fun = instance.cwrap('mg_path_copy', 'i32', ['i32']);
         return MgPath(this.#cPtr));
-}
+    }
 
-function destroy(instance) {
-    wrapped_fun = instance.cwrap('mg_path_destroy', 'i32');
-    return wrappedFun(this.#cPtr);
-}
+    function destroy(instance) {
+        wrapped_fun = instance.cwrap('mg_path_destroy', 'i32');
+        return wrappedFun(this.#cPtr);
+    }
 
-function transferToWasm() {
-    return this.#cPtr;
-}
+    function transferToWasm() {
+        return this.#cPtr;
+    }
 };
 
 export class MgDate {
@@ -977,4 +977,132 @@ export class MgPoint3D {
     function transferToWasm() {
         return this.#cPtr;
     }
+};
+
+export class MgClient {
+  #sessionPtr;  
+  constructor(sessionPtr) {
+    this.#sessionPtr = sessionPtr;
+  }
+
+  //todo expose ssl
+  static function connect(instance, host, port) {
+    let mgparamsPtr = instance._mg_session_params_make();
+    let mgSessionParamsSetHost = instance.cwrap('mg_session_paramse_set_host', 'void', ['string']);
+    mgSessionParamsSetHost(mgparamsPtr, host);
+    instance._mg_session_params_set_port(mgparamsPtr, port);
+    instance._mg_session_params_set_sslmode(mgparamsPtr, 0);
+
+    let wrappedFun = instance.cwrap('mg_connect',
+                                    'number',
+                                    ['number', 'number'], { async : true });
+    let ptrToPtr = instance.malloc(4);
+    //todo cancel on error
+    let maybeConnected = await wrappedFun(mgparamsPtr, ptrToPtr);
+    if(maybeConnected < 0) {
+      //clean up here
+      return null;
+    }
+    this.#sessionPtr = instance.getValue(ptr3, 'i32');
+    instance.free(ptrToPtr);
+    instance._mg_session_params_destroy(mgparamsPtr);
+    return new MgClient(sessionPtr);
+  }
+
+  function execute(instance, query) {
+    let mgSessionRun = instance.cwrap('mg_session_run', 
+                                        'number', 
+                                        ['number', 'string', 'number', 'number', 'number', 'number'], { async : true }); 
+    //todo error handling
+    let runResult = await mgSessionRun(this.#sessionPtr, query, null, null, null, null);
+    if(runResult < 0 ) {
+      return false;
+    }
+    return (pull(instance) < 0) ? false : true;
+  }
+  
+  function pull() {
+    let pullResult = instance._mg_session_pull(this.#sessionPtr, 0);
+    return pullResult();
+  }
+
+  function fetchOne(instance) {
+    let mgResult = instance._malloc(4);
+    //todo probably remove this ptr (check memory model)
+    let ptrMgResult = instance._malloc(4);
+    instance.setValue(ptrMgResult, mgResult, 'i32');
+    let wrappedFun = instance.cwrap('mg_session_fetch', 'number', ['number', 'number'], { async : true });
+    //todo add error handling
+    let result = await wrappedFun(this.#sessionPtr, ptrMgResult);
+    //todo fix allocations
+    if(result != 1) {
+      return null;
+    }
+    
+    let mgList = resultRow(instance);
+    let arr = [];
+    for(let i = 0; i < mgList.size(); ++i) {
+        arr.push(mgList.at(i));
+    }
+    return arr;
+  }
+
+  function fetchAll(instance) {
+    let arr = [];
+    let result;
+    while(result = fetchOne(instance)) {
+        if(result == null) {
+          //clean up
+          return null;
+        }
+        arr.push(result) 
+    }
+    return arr;
+  }
+  
+  function discardAll(instance) { 
+    while(FetchOne(instance));
+  }
+
+  function beginTransaction() { 
+    //check async here
+    let wrappedFun = instance.cwrap('mg_session_begin_transaction', 'number', ['number', 'number'], { async : true });
+    return wrappedFun(this.#sessionPtr, null) == 0;
+  } 
+
+  function commitTransaction() {
+    let mgResult = instance._malloc(4);
+    //todo probably remove this ptr (check memory model)
+    let ptrMgResult = instance._malloc(4);
+    let wrappedFun = instance.cwrap('mg_session_commit_transaction', 'number', ['number', 'number'], { async : true });
+    return wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+  }
+
+  function rollbackTransaction() { 
+    let mgResult = instance._malloc(4);
+    //todo probably remove this ptr (check memory model)
+    let ptrMgResult = instance._malloc(4);
+    let wrappedFun = instance.cwrap('mg_session_rollback_transaction', 'number', ['number', 'number'], { async : true });
+    return wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+  }
+
+  function rowToMgList(instance, mgResultPtr) {
+    let wrapperFun = instance.cwrap('mg_connect',
+                                    'number',
+                                    ['number], { async : true }); // argument types
+    return MgList(wrappedFun(mgResultPtr));
+
+  }
+
+  function resultRow(instance) {
+    return this.#cacheResult;
+  }
+
+  function resultColumns(instance) {
+    return this.#cacheResult;
+  }
+
+  function resultSummary(instance) {
+    return this.#cacheResult;
+  }
 };
