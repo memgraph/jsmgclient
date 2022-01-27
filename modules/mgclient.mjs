@@ -1103,10 +1103,17 @@ export class MgPoint3D {
 
 class MemoryHandle {
     #memArray;
-    constructor(arr) {
-        this.#memArray = arr;
+    constructor() {
+        this.#memArray = [];
     }
-    releaseAll() {
+
+    alloc(size) {
+      let ptr = instance._malloc(size);
+      this.#memArray.push(ptr);
+      return ptr;
+    }
+
+    deallocAll() {
         //deallocate in reverse order
         memArray.slice().reverse().forEach(element => {
             instance_.free(element);
@@ -1134,20 +1141,20 @@ export class MgClient {
                 async: true
             });
 
-        let ptr = instance._malloc(4);
-        let ptrToPtr = instance._malloc(4);
+        let memoryHandle = new MemoryHandle();
+        let ptr = memoryHandle.alloc(4);
+        let ptrToPtr = memoryHandle.alloc(4);
         instance.setValue(ptrToPtr, ptr, 'i32');
-        let memoryHandle = new MemoryHandle([ptr, ptrToPtr], instance);
 
         //todo cancel on error async
         let maybeConnected = await wrappedFun(mgparamsPtr, ptrToPtr);
         if (maybeConnected < 0) {
-            memoryHandle.releaseAll();
+            memoryHandle.deallocAll();
             return null;
         }
         let sessionPtr = instance.getValue(ptrToPtr, 'i32');
 
-        memoryHandle.releaseAll();
+        memoryHandle.deallocAll();
         instance._mg_session_params_destroy(mgparamsPtr);
 
         return new MgClient(sessionPtr, instance);
@@ -1173,9 +1180,9 @@ export class MgClient {
     }
 
     async fetchOne() {
-        let mgResult = instance._malloc(4);
-        let ptrMgResult = instance._malloc(4);
-        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        let memoryHandle = new MemoryHandle();
+        let mgResult = memoryHandle.alloc(4);
+        let ptrMgResult = memoryHandle.alloc(4);
         instance.setValue(ptrMgResult, mgResult, 'i32');
         let wrappedFun = instance.cwrap('mg_session_fetch', 'number', ['number', 'number'], {
             async: true
@@ -1184,7 +1191,7 @@ export class MgClient {
         let result = await wrappedFun(this.#sessionPtr, ptrMgResult);
         //todo fix allocations
         if (result != 1) {
-            memoryHandle.releaseAll();
+            memoryHandle.deallocAll();
             return null;
         }
 
@@ -1193,7 +1200,7 @@ export class MgClient {
         //        for (let i = 0; i < mgList.size(); ++i) {
         //            arr.push(mgList.at(i));
         //        }
-        memoryHandle.releaseAll();
+        memoryHandle.deallocAll();
         return mgList;
     }
 
@@ -1227,27 +1234,27 @@ export class MgClient {
     }
 
     async commitTransaction() {
-        let mgResult = instance._malloc(4);
-        let ptrMgResult = instance._malloc(4);
-        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        let memoryHandle = new MemoryHandle();
+        let mgResult = memoryHandle.alloc(4);
+        let ptrMgResult = memoryHandle.alloc(4);
         let wrappedFun = instance.cwrap('mg_session_commit_transaction', 'number', ['number', 'number'], {
             async: true
         });
         let result = wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
-        memoryHandle.releaseAll();
+        memoryHandle.deallocAll();
         return result;
     }
 
     async rollbackTransaction() {
-        let mgResult = instance._malloc(4);
-        let ptrMgResult = instance._malloc(4);
-        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        let memoryHandle = new MemoryHandle();
+        let mgResult = memoryHandle._malloc(4);
+        let ptrMgResult = memoryHandle._malloc(4);
         let wrappedFun = instance.cwrap('mg_session_rollback_transaction', 'number', ['number', 'number'], {
             async: true
         });
 
         let result = wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
-        memoryHandle.releaseAll();
+        memoryHandle.deallocAll();
         return result;
     }
 
