@@ -1,12 +1,11 @@
 import * as mg from './mgclient.mjs';
 import factory from '../examples/out.js';
-//let mg = require('./mgclient.mjs');
 
 factory().then(async (instance) => {
-    console.log("Hello world");
-    console.log("version is " + mg.mgclientVersion(instance));
-    mg.mgInit(instance);
-    let mgClient = await mg.MgClient.connect(instance, "0.0.0.0", 7687);
+    console.log("Hello world, jsmgclient");
+    mg.init(instance);
+    console.log("version is " + mg.mgclientVersion());
+    let mgClient = await mg.MgClient.connect("0.0.0.0", 7687);
     if(mgClient == null) {
       throw "Could not connect to memgraph!";
     }
@@ -17,7 +16,7 @@ factory().then(async (instance) => {
     }
     console.log("Total rows " + res.length);
     mgClient.destroySession();
-    mg.mgClientFinalize(instance);
+    mg.finalize();
 });
 
 

@@ -1,22 +1,63 @@
 //import instance from "../examples/out.js"
 
-//todo implement MemoryRegistry
-//todo add another abstraction layer to get rid of passing the instance object
+class MgResourceManagerInternal {
+    #resourceManager;
+    constructor() {
+        this.#resourceManager = [];
+    }
 
-export function mgclientVersion(instance) {
+    push(resource) {
+        this.#resourceManager.push(resource);
+    }
+
+    stopManaging(resource) {
+        let index = this.resourceManager.findIndex(resource);
+        if (index == -1) {
+            throw "Internal error";
+        }
+        this.#resourceManager.splice(index, 1);
+    }
+
+    releaseAll() {
+        //deallocate in reverse order
+        this.#resourceManager.reverse().forEach(element => {
+            element.destroy();
+        });
+        this.#resourceManager = [];
+    }
+};
+
+let resourceManager = new MgResourceManagerInternal();
+
+function errorOrValue(value) {
+    if (value.transferToWasm() == null) {
+        return null
+    }
+    resourceManager.push(value);
+    return value;
+}
+
+let instance = null;
+
+export function clientVersion() {
     let wrappedFun = instance.cwrap('mg_client_version', 'string');
     return wrappedFun();
 }
 
-export function mgInit(instance) {
+export function init(wasmInstance) {
+    if (instance != null) {
+        return null;
+    }
+    instance = wasmInstance;
     return instance._mg_init();
 }
 
-export function mgClientFinalize(instance) {
+export function finalize() {
+    resourceManager.releaseAll();
     return instance._mg_finalize();
 }
 
-class MgValueTypeEnum {
+export class MgValueTypeEnum {
     static MG_VALUE_TYPE_NULL = new MgValueTypeEnum("MG_VALUE_TYPE_NULL");
     static MG_VALUE_TYPE_BOOL = new MgValueTypeEnum("MG_VALUE_TYPE_BOOL");
     static MG_VALUE_TYPE_INTEGER = new MgValueTypeEnum("MG_VALUE_TYPE_INTEGER");
@@ -55,7 +96,7 @@ export class MgValue {
         this.#cPtr = cPtr;
     }
 
-    getType(instance) {
+    getType() {
         wrappedFun = instance.cwrap('mg_value_get_type', 'i32', ['i32']);
         enumValuesArray = Object.keys(MgValueTypeEnum);
         return enumValuesArray[wrappedFun(this.#cPtr)];
@@ -65,146 +106,145 @@ export class MgValue {
         return this.#cPtr == 0;
     }
 
-    getBool(instance) {
+    getBool() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_BOOL.name) {
-            throw "Underline type is not a bool";
-
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_bool', 'i32', ['i32']);
-        return new wrappedFun(this.#cPtr);
+        return wrappedFun(this.#cPtr);
     }
 
-    getInteger(instance) {
+    getInteger() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_INTEGER.name) {
-            throw "Underline type is not an Integer";
+            return null
         }
         wrapped_fun = instance.cwrap('mg_value_integer', 'i32', ['i32']);
-        return new wrappedFun(this.#cPtr);
+        return wrappedFun(this.#cPtr);
     }
 
-    getFloat(instance) {
+    getFloat() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_FLOAT.name) {
-            throw "Underline type is not a Float";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_float', 'i32', ['i32']);
         return new wrappedFun(this.#cPtr);
     }
 
-    getMgString(instance) {
+    getMgString() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_STRING.name) {
-            throw "Underline type is not a String";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_string', 'i32', ['i32']);
         return new MgString(wrappedFun(this.#cPtr));
     }
 
-    getMgList(instance) {
+    getMgList() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LIST.name) {
-            throw "Underline type is not a MgList";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_list', 'i32', ['i32']);
         return new MgList(wrappedFun(this.#cPtr));
     }
 
-    getMgMap(instance) {
+    getMgMap() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_MAP.name) {
-            throw "Underline type is not a MgMap";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_map', 'i32', ['i32']);
         return new MgMap(wrappedFun(this.#cPtr));
     }
 
-    getMgNode(instance) {
+    getMgNode() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_NODE.name) {
-            throw "Underline type is not a MgNode";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_node', 'i32', ['i32']);
         return new MgNode(wrappedFun(this.#cPtr));
     }
 
-    getMgRelationship(instance) {
+    getMgRelationship() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_RELATIONSHIP.name) {
-            throw "Underline type is not a MgRelationship";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_relationship', 'i32', ['i32']);
         return new MgRelationship(wrappedFun(this.#cPtr));
     }
 
-    getMgUnboundRelationship(instance) {
+    getMgUnboundRelationship() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_UNBOUND_RELATIONSHIP.name) {
-            throw "Underline type is not a MgUnboundRelationship";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_unbound_relationship', 'i32', ['i32']);
         return new MgUnboundRelationship(wrappedFun(this.#cPtr));
     }
 
-    getMgPath(instance) {
+    getMgPath() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_PATH.name) {
-            throw "Underline type is not a MgPath";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_path', 'i32', ['i32']);
         return new MgPath(wrappedFun(this.#cPtr));
     }
 
-    getMgDate(instance) {
+    getMgDate() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE.name) {
-            throw "Underline type is not a MgDate";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_date', 'i32', ['i32']);
         return new MgDate(wrappedFun(this.#cPtr));
     }
 
-    getMgTime(instance) {
+    getMgTime() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_TIME.name) {
-            throw "Underline type is not a MgTime";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_time', 'i32', ['i32']);
         return new MgTime(wrappedFun(this.#cPtr));
     }
 
-    getMgLocalTime(instance) {
+    getMgLocalTime() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LOCAL_TIME.name) {
-            throw "Underline type is not a MgLocalTime";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_local_time', 'i32', ['i32']);
         return new MgLocalTime(wrappedFun(this.#cPtr));
     }
 
-    getMgDateTime(instance) {
+    getMgDateTime() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE_TIME.name) {
-            throw "Underline type is not a MgDateTime";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_date_time', 'i32', ['i32']);
         return new MgDateTime(wrappedFun(this.#cPtr));
     }
 
-    getMgDateTimeZoneId(instance) {
+    getMgDateTimeZoneId() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE_TIME_ZONE_ID.name) {
-            throw "Underline type is not a MgDateTimeZoneId";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_date_time_zone_id', 'i32', ['i32']);
         return new MgDateTimeZoneId(wrappedFun(this.#cPtr));
     }
 
-    getMgLocalDateTime(instance) {
+    getMgLocalDateTime() {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LOCAL_DATE_TIME.name) {
-            throw "Underline type is not a MgLocalDateTime";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_local_date_time', 'i32', ['i32']);
         return new MgLocalDateTime(wrappedFun(this.#cPtr));
@@ -213,7 +253,7 @@ export class MgValue {
     getMgDuration(instance) {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DURATION.name) {
-            throw "Underline type is not a MgDuration";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_duration', 'i32', ['i32']);
         return new MgDuration(wrappedFun(this.#cPtr));
@@ -222,7 +262,7 @@ export class MgValue {
     getPoint2D(instance) {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_2D.name) {
-            throw "Underline type is not a MgPoint2D";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_point_2d', 'i32', ['i32']);
         return new MgPoint2D(wrappedFun(this.#cPtr));
@@ -231,7 +271,7 @@ export class MgValue {
     getMgPoint3D(instance) {
         type = this.getType(instance);
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_3D.name) {
-            throw "Underline type is not a MgDuration";
+            return null;
         }
         wrapped_fun = instance.cwrap('mg_value_point_3d', 'i32', ['i32']);
         return new MgLocalPoint3D(wrappedFun(this.#cPtr));
@@ -239,7 +279,8 @@ export class MgValue {
 
     copy(instance) {
         wrapped_fun = instance.cwrap('mg_value_copy', 'i32', ['i32']);
-        return new MgValue(wrappedFun(this.#cPtr));
+        let result = new MgValue(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
     destroy(instance) {
@@ -251,108 +292,149 @@ export class MgValue {
         return this.#cPtr;
     }
 
+    static
+    function makeNull() {
+        let result = new MgValue(instance._mg_value_make_null());
+        return errorOrValue(result);
+    }
+
+    static
+    function makeBool(val) {
+        let result = new MgValue(instance._mg_value_make_bool(val));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeInteger(val) {
+        let result = new MgValue(instance._mg_value_make_integer_(val));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeFloat(val) {
+        let result = new MgValue(instance._mg_value_make_float(val));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeString(str) {
+        wrapped_fun = instance.cwrap('mg_value_make_string', 'i32', ['string']);
+        let result = new MgValue(wrapped_fun(str));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeString2(mgString) {
+        wrapped_fun = instance.cwrap('mg_value_make_string2', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgString.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeList(mgList) {
+        wrapped_fun = instance.cwrap('mg_value_make_list', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgList.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeMap(mgMap) {
+        wrapped_fun = instance.cwrap('mg_value_make_map', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgMap.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeNode(mgNode) {
+        wrapped_fun = instance.cwrap('mg_value_make_node', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgNode.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeRelationship(mgRelationship) {
+        wrapped_fun = instance.cwrap('mg_value_make_relationship', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgRelationship.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function makeUnboundRelationship(mgValueMakeUnboundRelationship) {
+        wrapped_fun = instance.cwrap('mg_value_make_unbound_relationship', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgValueMakeUnboundRelationship.transferToWasm()));
+        return value;
+    }
+
+    static
+    function MgValueMakePath(mgPath) {
+        wrapped_fun = instance.cwrap('mg_value_make_path', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgPath.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeDate(mgDate) {
+        wrapped_fun = instance.cwrap('mg_value_make_date', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgDate.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeTime(mgTime) {
+        wrapped_fun = instance.cwrap('mg_value_make_time', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgTime.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeLocalTime(mgLocalTime) {
+        wrapped_fun = instance.cwrap('mg_value_make_local_time', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgLocalTime.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeDateTime(mgDateTime) {
+        wrapped_fun = instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgDateTime.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeTimeZoneId(mgDateTimeZoneId) {
+        wrapped_fun = instance.cwrap('mg_value_make_date_time_zone_id', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgDateTimeZoneId.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeLocalDateTime(mgLocalDateTime) {
+        wrapped_fun = instance.cwrap('mg_value_make_local_date_time', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgLocalDateTime.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakeDuration(mgDuration) {
+        wrapped_fun = instance.cwrap('mg_value_make_duration', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgDuration.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakePoint2d(mgPoint2d) {
+        wrapped_fun = instance.cwrap('mg_value_make_point_2d', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgValueMakePoint2d.transferToWasm()));
+        return errorOrValue(result);
+    }
+
+    static
+    function MgValueMakePoint3d(mgPoint3D) {
+        wrapped_fun = instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
+        let result = new MgValue(wrappedFun(mgPoint3D.transferToWasm()));
+        return errorOrValue(result);
+    }
 };
-
-export function MgValueMakeNull(instance) {
-    return new MgValue(instance._mg_value_make_null());
-}
-
-export function MgValueMakeBool(instance, val) {
-    return new MgValue(instance._mg_value_make_bool(val));
-}
-
-export function MgValueMakeInteger(instance, val) {
-    return new MgValue(instance._mg_value_make_integer_(val));
-}
-
-export function MgValueMakeFloat(instance, val) {
-    return new MgValue(instance._mg_value_make_float(val));
-}
-
-export function MgValueMakeString(instance, str) {
-    wrapped_fun = instance.cwrap('mg_value_make_string', 'i32', ['string']);
-    return new MgValue(wrapped_fun(str));
-}
-
-export function MgValueMakeString2(instance, mgString) {
-    wrapped_fun = instance.cwrap('mg_value_make_string2', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgString.transferToWasm()));
-}
-
-export function MgValueMakeList(instance, mgList) {
-    wrapped_fun = instance.cwrap('mg_value_make_list', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgList.transferToWasm()));
-}
-
-export function MgValueMakeMap(instance, mgMap) {
-    wrapped_fun = instance.cwrap('mg_value_make_map', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgMap.transferToWasm()));
-}
-
-export function MgValueMakeNode(instance, mgNode) {
-    wrapped_fun = instance.cwrap('mg_value_make_node', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgNode.transferToWasm()));
-}
-
-export function MgValueMakeRelationship(instance, mgRelationship) {
-    wrapped_fun = instance.cwrap('mg_value_make_relationship', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgRelationship.transferToWasm()));
-}
-
-export function MgValueMakeUnboundRelationship(instance, mgValueMakeUnboundRelationship) {
-    wrapped_fun = instance.cwrap('mg_value_make_unbound_relationship', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgValueMakeUnboundRelationship.transferToWasm()));
-}
-
-export function MgValueMakePath(instance, mgPath) {
-    wrapped_fun = instance.cwrap('mg_value_make_path', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgPath.transferToWasm()));
-}
-
-export function MgValueMakeDate(instance, mgDate) {
-    wrapped_fun = instance.cwrap('mg_value_make_date', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgDate.transferToWasm()));
-}
-
-export function MgValueMakeTime(instance, mgTime) {
-    wrapped_fun = instance.cwrap('mg_value_make_time', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgTime.transferToWasm()));
-}
-
-export function MgValueMakeLocalTime(instance, mgLocalTime) {
-    wrapped_fun = instance.cwrap('mg_value_make_local_time', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgLocalTime.transferToWasm()));
-}
-
-export function MgValueMakeDateTime(instance, mgDateTime) {
-    wrapped_fun = instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgDateTime.transferToWasm()));
-}
-
-export function MgValueMakeTimeZoneId(instance, mgDateTimeZoneId) {
-    wrapped_fun = instance.cwrap('mg_value_make_date_time_zone_id', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgDateTimeZoneId.transferToWasm()));
-}
-
-export function MgValueMakeLocalDateTime(instance, mgLocalDateTime) {
-    wrapped_fun = instance.cwrap('mg_value_make_local_date_time', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgLocalDateTime.transferToWasm()));
-}
-
-export function MgValueMakeDuration(instance, mgDuration) {
-    wrapped_fun = instance.cwrap('mg_value_make_duration', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgDuration.transferToWasm()));
-}
-
-export function MgValueMakePoint2d(instance, mgPoint2d) {
-    wrapped_fun = instance.cwrap('mg_value_make_point_2d', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgValueMakePoint2d.transferToWasm()));
-}
-
-export function MgValueMakePoint3d(instance, mgPoint3D) {
-    wrapped_fun = instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
-    return new MgValue(wrappedFun(mgPoint3D.transferToWasm()));
-}
 
 export class MgString {
     #cPtr;
@@ -360,26 +442,33 @@ export class MgString {
         this.#cPtr = cPtr;
     }
 
-    static make(instance, string) {
+    static make(string) {
         wrapped_fun = instance.cwrap('mg_string_make', 'i32', ['string']);
-        return MgString(wrappedFun(string));
+        let result = new MgString(wrappedFun(string));
+        return errorOrValue(result);
     }
 
-    toString(instance) {
+    toString() {
         wrapped_fun = instance.cwrap('mg_string_data', 'i32');
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgString) {
+    copy(mgString) {
         wrapped_fun = instance.cwrap('mg_string_copy', 'i32', ['i32']);
-        return MgString(wrappedFun(mgString.transferToWasm()));
+        let result = new MgString(wrappedFun(mgString.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destory(instance) {
+    destory() {
         wrapped_fun = instance.cwrap('mg_string_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
+
+    transferToWasm() {
+        return this.#cPtr;
+    }
 };
+
 
 export class MgList {
     #cPtr;
@@ -388,33 +477,40 @@ export class MgList {
     }
 
     static
-    make(instance, capacity) {
+    make(capacity) {
         wrapped_fun = instance.cwrap('mg_list_make_empty', 'i32');
-        return MgList(wrappedFun(this.#cPtr));
+        let result = new MgList(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
-    size(instance) {
+    size() {
         wrapped_fun = instance.cwrap('mg_list_size', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
     //todo check reference ownership here
-    append(instance, mgValue) {
+    append(mgValue) {
         wrapped_fun = instance.cwrap('mg_list_append', 'i32', ['i32', 'i32']);
-        return wrappedFun(this.#cPtr, mgValue.transferToWasm());
+        let result = wrappedFun(this.#cPtr, mgValue.transferToWasm());
+        if (result == 0) {
+            resourceManager.stopManaging(result);
+        }
+        return result;
+
     }
 
-    at(instance, index) {
+    at(index) {
         wrapped_fun = instance.cwrap('mg_list_at', 'i32', ['i32']);
-        return MgValue(wrappedFun(this.#cPtr));
+        return new MgValue(wrappedFun(this.#cPtr));
     }
 
-    copy(instance) {
+    copy() {
         wrapped_fun = instance.cwrap('mg_list_copy', 'i32', ['i32']);
-        return MgList(wrappedFun(this.#cPtr));
+        let result = MgList(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_list_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -429,40 +525,51 @@ export class MgMap {
     constructor(cPtr) {
         this.#cPtr = cPtr;
     }
+
     static
-    make(instance, capacity) {
+    make(capacity) {
         wrapped_fun = instance.cwrap('mg_map_make_empty', 'i32');
-        return MgMap(wrappedFun(this.#cPtr));
+        let result = new MgMap(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
-    size(instance) {
+    size() {
         wrapped_fun = instance.cwrap('mg_map_size', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    insert(instance, keyString, mgValue) {
-        wrapped_fun = instance.cwrap('mg_map_size', 'i32', ['i32', 'string', 'i32']);
-        return wrappedFun(this.#cPtr, keyString, mgValue.transferToWasm());
+    insert(keyString, mgValue) {
+        wrapped_fun = instance.cwrap('mg_map_insert', 'i32', ['i32', 'string', 'i32']);
+        let result = wrappedFun(this.#cPtr, keyString, mgValue.transferToWasm());
+        if (result == 0) {
+            resourceManager.stopManaging(mgValue);
+        }
+        return result;
     }
 
-    insertWithMgStringKey(instance, mgStringKey, mgValue) {
-        wrapped_fun = instance.cwrap('mg_map_size', 'i32', ['i32', 'int32', 'i32']);
-        return wrappedFun(this.#cPtr, mgStringKey.transferToWasm(), mgValue.transferToWasm());
+    insertWithMgStringKey(mgStringKey, mgValue) {
+        wrapped_fun = instance.cwrap('mg_map_insert2', 'i32', ['i32', 'int32', 'i32']);
+        let result = wrappedFun(this.#cPtr, mgStringKey.transferToWasm(), mgValue.transferToWasm());
+        if (result == 0) {
+            resourceManager.stopManaging(mgValue);
+            resourceManager.stopManaging(mgStringKey);
+        }
+        return result;
     }
 
     //todo check for insert unsafe
-
-    at(instance, key) {
+    at(key) {
         wrapped_fun = instance.cwrap('mg_map_at', 'i32', ['i32']);
-        return MgValue(wrappedFun(this.#cPtr));
+        return new MgValue(wrappedFun(this.#cPtr));
     }
 
-    copy(instance, mgMap) {
+    copy(mgMap) {
         wrapped_fun = instance.cwrap('mg_map_copy', 'i32', ['i32']);
-        return MgMap(wrappedFun(mgMap.transferToWasm()));
+        let result = MgMap(wrappedFun(mgMap.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_map_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -478,34 +585,35 @@ export class MgNode {
         this.#cPtr = cPtr;
     }
 
-    id(instance) {
+    id() {
         wrapped_fun = instance.cwrap('mg_node_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    labelCount(instance) {
+    labelCount() {
         wrapped_fun = instance.cwrap('mg_label_count', 'i32');
         return wrappedFun(this.#cPtr);
     }
 
-    labelAtPos(instance, pos) {
+    labelAtPos(pos) {
         wrapped_fun = instance.cwrap('mg_node_label_at', 'i32', ['i32']);
-        return MgString(wrappedFun(this.#cPtr, pos));
+        return new MgString(wrappedFun(this.#cPtr, pos));
     }
 
     //todo check for insert unsafe
 
-    properties(instance) {
+    properties() {
         wrapped_fun = instance.cwrap('mg_node_properties', 'i32');
-        return MgMap(wrappedFun(this.#cPtr));
+        return new MgMap(wrappedFun(this.#cPtr));
     }
 
-    copy(instance, mgNode) {
+    copy(mgNode) {
         wrapped_fun = instance.cwrap('mg_node_copy', 'i32', ['i32']);
-        return MgNode(wrappedFun(mgNode.transferToWasm()));
+        let result = MgNode(wrappedFun(mgNode.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_map_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -522,37 +630,38 @@ export class MgRelationship {
         this.#cPtr = cPtr;
     }
 
-    id(instance) {
+    id() {
         wrapped_fun = instance.cwrap('mg_relationship_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    startId(instance) {
+    startId() {
         wrapped_fun = instance.cwrap('mg_relationship_start_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    endId(instance) {
+    endId() {
         wrapped_fun = instance.cwrap('mg_relationship_end_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    type(instance) {
+    type() {
         wrapped_fun = instance.cwrap('mg_relationship_type', 'i32', ['i32']);
-        return MgString(wrappedFun(this.#cPtr));
+        return new MgString(wrappedFun(this.#cPtr));
     }
 
-    properties(instance) {
+    properties() {
         wrapped_fun = instance.cwrap('mg_relationship_properties', 'i32', ['i32']);
-        return MgMap(wrappedFun(this.#cPtr, pos));
+        return new MgMap(wrappedFun(this.#cPtr, pos));
     }
 
-    copy(instance) {
+    copy() {
         wrapped_fun = instance.cwrap('mg_relationship_copy', 'i32', ['i32']);
-        return MgRelationship(wrappedFun(this.#cPtr));
+        let result = MgRelationship(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_relationship_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -569,27 +678,28 @@ export class MgUnboundRelationship {
         this.#cPtr = cPtr;
     }
 
-    id(instance) {
+    id() {
         wrapped_fun = instance.cwrap('mg_unbound_relationship_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    type(instance) {
+    type() {
         wrapped_fun = instance.cwrap('mg_unbound_relationship', 'i32', ['i32']);
-        return MgString(wrappedFun(this.#cPtr));
+        return new MgString(wrappedFun(this.#cPtr));
     }
 
-    properties(instance) {
+    properties() {
         wrapped_fun = instance.cwrap('mg_unbound_relationship_properties', 'i32', ['i32']);
-        return MgMap(wrappedFun(this.#cPtr, pos));
+        return new MgMap(wrappedFun(this.#cPtr, pos));
     }
 
-    copy(instance) {
+    copy() {
         wrapped_fun = instance.cwrap('mg_unbound_relationship_copy', 'i32', ['i32']);
-        return MgUnboundRelationship(wrappedFun(this.#cPtr));
+        let result = new MgUnboundRelationship(wrappedFun(this.#cPtr));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_unbound_relationship_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -606,32 +716,33 @@ export class MgPath {
         this.#cPtr = cPtr;
     }
 
-    length(instance) {
+    length() {
         wrapped_fun = instance.cwrap('mg_path_length', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    nodeAt(instance, pos) {
+    nodeAt(pos) {
         wrapped_fun = instance.cwrap('mg_path_node_at', 'i32', ['i32', 'i32']);
-        return MgNode(wrappedFun(this.#cPtr));
+        return new MgNode(wrappedFun(this.#cPtr));
     }
 
-    relationshipAt(instance, pos) {
+    relationshipAt(pos) {
         wrapped_fun = instance.cwrap('mg_path_relationship_at', 'i32', ['i32', 'i32']);
         return MgUnboundRelationship(wrappedFun(this.#cPtr, pos));
     }
 
-    relationshipReversedAt(instance, pos) {
+    relationshipReversedAt(pos) {
         wrapped_fun = instance.cwrap('mg_unbound_relationship_copy', 'i32', ['i32', 'i32']);
         return wrappedFun(this.#cPtr, pos);
     }
 
-    copy(instance) {
+    copy() {
         wrapped_fun = instance.cwrap('mg_path_copy', 'i32', ['i32']);
-        return MgPath(this.#cPtr);
+        let result = new MgPath(this.#cPtr);
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_path_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -649,22 +760,24 @@ export class MgDate {
     }
 
     static
-    make(instance, days) {
+    make(days) {
         wrapped_fun = instance.cwrap('mg_date_make', 'i32', ['i32']);
-        return MgDate(wrappedFun(days));
+        let result = new MgDate(wrappedFun(days));
+        return errorOrValue(result);
     }
 
-    days(instance) {
+    days() {
         wrapped_fun = instance.cwrap('mg_date_days', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgDate) {
+    copy(mgDate) {
         wrapped_fun = instance.cwrap('mg_date_copy', 'i32', ['i32']);
-        return MgDate(wrappedFun(mgDate.transferToWasm()));
+        let result = new MgDate(wrappedFun(mgDate.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_map_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -681,22 +794,23 @@ export class MgTime {
         this.#cPtr = cPtr;
     }
 
-    nanoseconds(instance) {
+    nanoseconds() {
         wrapped_fun = instance.cwrap('mg_time_nanoseconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    tzOffsetSeconds(instance) {
+    tzOffsetSeconds() {
         wrapped_fun = instance.cwrap('mg_time_tz_offset_seconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgTime) {
+    copy(mgTime) {
         wrapped_fun = instance.cwrap('mg_time_tz_copy', 'i32', ['i32']);
-        return MgTime(wrappedFun(mgDate.transferToWasm()));
+        let result = new MgTime(wrappedFun(mgDate.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_map_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -714,22 +828,23 @@ export class MgLocalTime {
     }
 
     static
-    make(instance, days) {
+    make(days) {
         wrapped_fun = instance.cwrap('mg_local_time_make', 'i32');
-        return MgLocalTime(wrappedFun(days));
+        let result = MgLocalTime(wrappedFun(days));
+        return errorOrValue(result);
     }
 
-    days(instance) {
+    days() {
         wrapped_fun = instance.cwrap('mg_date_days', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgLocalTime) {
+    copy(mgLocalTime) {
         wrapped_fun = instance.cwrap('mg_local_time_copy', 'i32', ['i32']);
         return MgDate(wrappedFun(mgLocalTime.transferToWasm()));
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_local_time_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -746,27 +861,28 @@ export class MgDateTime {
         this.#cPtr = cPtr;
     }
 
-    seconds(instance) {
+    seconds() {
         wrapped_fun = instance.cwrap('mg_date_time_seconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    nanoseconds(instance) {
+    nanoseconds() {
         wrapped_fun = instance.cwrap('mg_date_time_nanoseconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    tzOffsetMinutes(instance) {
+    tzOffsetMinutes() {
         wrapped_fun = instance.cwrap('mg_date_time_tz_offset_minutes', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgDateTime) {
+    copy(mgDateTime) {
         wrapped_fun = instance.cwrap('mg_date_time_copy', 'i32', ['i32']);
-        return MgDateTime(wrappedFun(mgDateTime.transferToWasm()));
+        let result = new MgDateTime(wrappedFun(mgDateTime.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_local_time_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -783,27 +899,28 @@ export class MgDateTimeZoneId {
         this.#cPtr = cPtr;
     }
 
-    seconds(instance) {
+    seconds() {
         wrapped_fun = instance.cwrap('mg_date_time_zone_id_seconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    nanoseconds(instance) {
+    nanoseconds() {
         wrapped_fun = instance.cwrap('mg_date_time_zone_id_nanoseconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    id(instance) {
+    id() {
         wrapped_fun = instance.cwrap('mg_date_time_zone_id_tz_id', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgDateTime) {
+    copy(mgDateTime) {
         wrapped_fun = instance.cwrap('mg_date_time_zone_id_copy', 'i32', ['i32']);
-        return MgDateTime(wrappedFun(mgDateTime.transferToWasm()));
+        let result = new MgDateTime(wrappedFun(mgDateTime.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_date_time_zone_id_destroy', 'i32');
         return wrappedFun(this.#cPtr);
     }
@@ -821,27 +938,29 @@ export class MgLocalDateTime {
     }
 
     static
-    make(instance, seconds, nanoseconds) {
+    make(seconds, nanoseconds) {
         wrapped_fun = instance.cwrap('mg_local_date_time_make', 'i32', ['i32', 'i32']);
-        return MgLocalDateTime(wrappedFun(seconds, nanoseconds));
+        let result = new MgLocalDateTime(wrappedFun(seconds, nanoseconds));
+        return errorOrValue(result);
     }
 
-    seconds(instance) {
+    seconds() {
         wrapped_fun = instance.cwrap('mg_local_date_time_seconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    nanoseconds(instance) {
+    nanoseconds() {
         wrapped_fun = instance.cwrap('mg_local_date_time_nanoseconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgLocalDateTime) {
+    copy(mgLocalDateTime) {
         wrapped_fun = instance.cwrap('mg_local_date_time_copy', 'i32', ['i32']);
-        return MgLocalDateTime(wrappedFun(mgLocalDateTime.transferToWasm()));
+        let value = new MgLocalDateTime(wrappedFun(mgLocalDateTime.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_local_date_time_destroy', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
@@ -859,37 +978,39 @@ export class MgDuration {
     }
 
     static
-    make(instance, months, days, seconds, nanoseconds) {
+    make(months, days, seconds, nanoseconds) {
         wrapped_fun = instance.cwrap('mg_duration_make', 'i32', ['i32', 'i32', 'i32', 'i32']);
-        return MgDuration(wrappedFun(months, days, seconds, nanoseconds));
+        let result = MgDuration(wrappedFun(months, days, seconds, nanoseconds));
+        return errorOrValue(result);
     }
 
-    months(instance) {
+    months() {
         wrapped_fun = instance.cwrap('mg_duration_months', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    days(instance) {
+    days() {
         wrapped_fun = instance.cwrap('mg_duration_days', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    seconds(instance) {
+    seconds() {
         wrapped_fun = instance.cwrap('mg_duration_seconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    nanoseconds(instance) {
+    nanoseconds() {
         wrapped_fun = instance.cwrap('mg_duration_nanoseconds', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgDuration) {
+    copy(mgDuration) {
         wrapped_fun = instance.cwrap('mg_duration_copy', 'i32', ['i32']);
-        return MgDuration(wrappedFun(mgDuration.transferToWasm()));
+        let result = new MgDuration(wrappedFun(mgDuration.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_duration_destroy', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
@@ -906,27 +1027,28 @@ export class MgPoint2D {
         this.#cPtr = cPtr;
     }
 
-    srid(instance) {
+    srid() {
         wrapped_fun = instance.cwrap('mg_point_2d_srid', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    x(instance) {
+    x() {
         wrapped_fun = instance.cwrap('mg_point_2d_x', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    y(instance) {
+    y() {
         wrapped_fun = instance.cwrap('mg_point_2d_y', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgPoint2d) {
+    copy(mgPoint2d) {
         wrapped_fun = instance.cwrap('mg_point_2d_copy', 'i32', ['i32']);
-        return MgPoint2D(wrappedFun(mgPoint2d.transferToWasm()));
+        let value = MgPoint2D(wrappedFun(mgPoint2d.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_point_2d_destroy', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
@@ -943,32 +1065,33 @@ export class MgPoint3D {
         this.#cPtr = cPtr;
     }
 
-    srid(instance) {
+    srid() {
         wrapped_fun = instance.cwrap('mg_point_3d_srid', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    x(instance) {
+    x() {
         wrapped_fun = instance.cwrap('mg_point_3d_x', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    y(instance) {
+    y() {
         wrapped_fun = instance.cwrap('mg_point_3d_y', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    z(instance) {
+    z() {
         wrapped_fun = instance.cwrap('mg_point_3d_z', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
-    copy(instance, mgPoint2d) {
+    copy(mgPoint2d) {
         wrapped_fun = instance.cwrap('mg_point_2d_copy', 'i32', ['i32']);
-        return MgPoint3D(wrappedFun(mgPoint2d.transferToWasm()));
+        let result = new MgPoint3D(wrappedFun(mgPoint2d.transferToWasm()));
+        return errorOrValue(result);
     }
 
-    destroy(instance) {
+    destroy() {
         wrapped_fun = instance.cwrap('mg_point_2d_destroy', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
@@ -978,43 +1101,60 @@ export class MgPoint3D {
     }
 };
 
+class MemoryHandle {
+    #memArray;
+    constructor(arr) {
+        this.#memArray = arr;
+    }
+    releaseAll() {
+        //deallocate in reverse order
+        memArray.slice().reverse().forEach(element => {
+            instance_.free(element);
+        });
+    }
+};
+
 export class MgClient {
     #sessionPtr;
-    #instance
-    constructor(sessionPtr, instance) {
+    constructor(sessionPtr) {
         this.#sessionPtr = sessionPtr;
-        this.#instance = instance;
     }
+
     //todo expose ssl
-    static async connect(instance, host, port) {
-        let mgparamsPtr = instance._mg_session_params_make();
-        let mgSessionParamsSetHost = instance.cwrap('mg_session_params_set_host', 'void', ['number', 'string']);
+    static async connect(host, port) {
+        let mgparamsPtr = wasmInstance._mg_session_params_make();
+        let mgSessionParamsSetHost = wasm.instance.cwrap('mg_session_params_set_host', 'void', ['number', 'string']);
         mgSessionParamsSetHost(mgparamsPtr, host);
-        instance._mg_session_params_set_port(mgparamsPtr, port);
-        instance._mg_session_params_set_sslmode(mgparamsPtr, 0);
+        wasmInstance._mg_session_params_set_port(mgparamsPtr, port);
+        wasmInstance._mg_session_params_set_sslmode(mgparamsPtr, 0);
 
         let wrappedFun = instance.cwrap('mg_connect',
             'number',
             ['number', 'number'], {
                 async: true
             });
+
         let ptr = instance._malloc(4);
         let ptrToPtr = instance._malloc(4);
         instance.setValue(ptrToPtr, ptr, 'i32');
-        //todo cancel on error
+        let memoryHandle = new MemoryHandle([ptr, ptrToPtr], instance);
+
+        //todo cancel on error async
         let maybeConnected = await wrappedFun(mgparamsPtr, ptrToPtr);
         if (maybeConnected < 0) {
-            //clean up here
+            memoryHandle.releaseAll();
             return null;
         }
         let sessionPtr = instance.getValue(ptrToPtr, 'i32');
-        instance._free(ptrToPtr);
+
+        memoryHandle.releaseAll();
         instance._mg_session_params_destroy(mgparamsPtr);
+
         return new MgClient(sessionPtr, instance);
     }
 
     async execute(query) {
-        let mgSessionRun = this.#instance.cwrap('mg_session_run',
+        let mgSessionRun = instance.cwrap('mg_session_run',
             'number',
             ['number', 'string', 'number', 'number', 'number', 'number'], {
                 async: true
@@ -1024,35 +1164,37 @@ export class MgClient {
         if (runResult < 0) {
             return false;
         }
-        return (this.pull(this.#instance) < 0) ? false : true;
+        return (this.pull(instance) < 0) ? false : true;
     }
 
     pull() {
-        let pullResult = this.#instance._mg_session_pull(this.#sessionPtr, 0);
+        let pullResult = instance._mg_session_pull(this.#sessionPtr, 0);
         return pullResult;
     }
 
     async fetchOne() {
-        let mgResult = this.#instance._malloc(4);
-        //todo probably remove this ptr (check memory model)
-        let ptrMgResult = this.#instance._malloc(4);
-        this.#instance.setValue(ptrMgResult, mgResult, 'i32');
-        let wrappedFun = this.#instance.cwrap('mg_session_fetch', 'number', ['number', 'number'], {
+        let mgResult = instance._malloc(4);
+        let ptrMgResult = instance._malloc(4);
+        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        instance.setValue(ptrMgResult, mgResult, 'i32');
+        let wrappedFun = instance.cwrap('mg_session_fetch', 'number', ['number', 'number'], {
             async: true
         });
-        //todo add error handling
+        //todo add error handling when websocket fails
         let result = await wrappedFun(this.#sessionPtr, ptrMgResult);
         //todo fix allocations
         if (result != 1) {
+            memoryHandle.releaseAll();
             return null;
         }
 
-        let mgList = resultRow();
-        let arr = [];
-        for (let i = 0; i < mgList.size(); ++i) {
-            arr.push(mgList.at(i));
-        }
-        return arr;
+        let mgList = resultRow(ptrMgResult);
+        //        let arr = [];
+        //        for (let i = 0; i < mgList.size(); ++i) {
+        //            arr.push(mgList.at(i));
+        //        }
+        memoryHandle.releaseAll();
+        return mgList;
     }
 
     async fetchAll() {
@@ -1073,56 +1215,54 @@ export class MgClient {
     }
 
     destroySession() {
-        this.#instance._mg_session_destroy(this.#sessionPtr);
+        instance._mg_session_destroy(this.#sessionPtr);
     }
 
-    beginTransaction() {
+    async beginTransaction() {
         //check async here
-        let wrappedFun = this.#instance.cwrap('mg_session_begin_transaction', 'number', ['number', 'number'], {
+        let wrappedFun = instance.cwrap('mg_session_begin_transaction', 'number', ['number', 'number'], {
             async: true
         });
         return wrappedFun(this.#sessionPtr, null) == 0;
     }
 
-    commitTransaction() {
-        let mgResult = this.#instance._malloc(4);
-        //todo probably remove this ptr (check memory model)
-        let ptrMgResult = this.#instance._malloc(4);
-        let wrappedFun = this.#instance.cwrap('mg_session_commit_transaction', 'number', ['number', 'number'], {
+    async commitTransaction() {
+        let mgResult = instance._malloc(4);
+        let ptrMgResult = instance._malloc(4);
+        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        let wrappedFun = instance.cwrap('mg_session_commit_transaction', 'number', ['number', 'number'], {
             async: true
         });
-        return wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+        let result = wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+        memoryHandle.releaseAll();
+        return result;
     }
 
-    rollbackTransaction() {
-        let mgResult = this.#instance._malloc(4);
-        //todo probably remove this ptr (check memory model)
-        let ptrMgResult = this.#instance._malloc(4);
-        let wrappedFun = this.#instance.cwrap('mg_session_rollback_transaction', 'number', ['number', 'number'], {
+    async rollbackTransaction() {
+        let mgResult = instance._malloc(4);
+        let ptrMgResult = instance._malloc(4);
+        let memoryHandle = new MemoryHandle([mgResult, ptrMgResult], instance);
+        let wrappedFun = instance.cwrap('mg_session_rollback_transaction', 'number', ['number', 'number'], {
             async: true
         });
-        return wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+
+        let result = wrappedFun(this.#sessionPtr, ptrMgResult) == 0;
+        memoryHandle.releaseAll();
+        return result;
     }
 
-    rowToMgList(mgResultPtr) {
-        let wrapperFun = this.#instance.cwrap('mg_connect',
-            'number',
-            ['number'], {
-                async: true
-            }); // argument types
-        return MgList(wrappedFun(mgResultPtr));
-
+    resultRow(mgResult) {
+        let wrappedFun = instance.cwrap('mg_result_columns', 'number', ['number']);
+        return new MgList(wrappedFun(mgResult));
     }
 
-    //   resultRow(instance) {
-    //    return this.#cacheResult;
-    //  }
-    //
-    //   resultColumns(instance) {
-    //    return this.#cacheResult;
-    //  }
-    //
-    //   resultSummary(instance) {
-    //    return this.#cacheResult;
-    //  }
+    resultColumns(mgResult) {
+        let wrappedFun = instance.cwrap('mg_result_row', 'number', ['number']);
+        return new MgList(wrappedFun(mgResult));
+    }
+
+    resultSummary(mgResult) {
+        let wrappedFun = instance.cwrap('mg_result_summary', 'number', ['number']);
+        return new MgMap(wrappedFun(mgResult));
+    }
 };
