@@ -1122,11 +1122,11 @@ export class MgClient {
 
     //todo expose ssl
     static async connect(host, port) {
-        let mgparamsPtr = wasmInstance._mg_session_params_make();
-        let mgSessionParamsSetHost = wasm.instance.cwrap('mg_session_params_set_host', 'void', ['number', 'string']);
+        let mgparamsPtr = instance._mg_session_params_make();
+        let mgSessionParamsSetHost = instance.cwrap('mg_session_params_set_host', 'void', ['number', 'string']);
         mgSessionParamsSetHost(mgparamsPtr, host);
-        wasmInstance._mg_session_params_set_port(mgparamsPtr, port);
-        wasmInstance._mg_session_params_set_sslmode(mgparamsPtr, 0);
+        instance._mg_session_params_set_port(mgparamsPtr, port);
+        instance._mg_session_params_set_sslmode(mgparamsPtr, 0);
 
         let wrappedFun = instance.cwrap('mg_connect',
             'number',
