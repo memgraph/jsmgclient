@@ -1,10 +1,9 @@
-import * as mg from './mgclient.mjs';
-import factory from '../examples/out.js';
+import * as mg from '../modules/mgclient.mjs';
 
-factory().then(async (instance) => {
+mg.factory().then(async (instance) => {
     console.log("Hello world, jsmgclient");
     mg.init(instance);
-    console.log("version is " + mg.mgclientVersion());
+    console.log("version is " + mg.clientVersion());
     let mgClient = await mg.MgClient.connect("0.0.0.0", 7687);
     if(mgClient == null) {
       throw "Could not connect to memgraph!";

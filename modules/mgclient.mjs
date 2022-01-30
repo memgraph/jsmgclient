@@ -1128,8 +1128,8 @@ class MemoryHandle {
 
     deallocAll() {
         // deallocate in reverse order
-        memArray.slice().reverse().forEach(element => {
-            instance_.free(element);
+        this.#memArray.slice().reverse().forEach(element => {
+            instance._free(element);
         });
     }
 };
