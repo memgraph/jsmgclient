@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/memgraph/jsmgclient/issues"
   },
-  "homepage": "https://github.com/memgraph/jsmgclient#readme"
+  "homepage": "https://github.com/memgraph/jsmgclient#readme",
+  "dependencies": {
+    "ws": "^0.4.32"
+  }
 }
