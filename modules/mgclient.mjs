@@ -120,7 +120,8 @@ export class MgValue {
     getType() {
         let wrappedFun = instance.cwrap('mg_value_get_type', 'i32', ['i32']);
         let enumValuesArray = Object.keys(MgValueTypeEnum);
-        return enumValuesArray[wrappedFun(this.#cPtr)];
+        let val = wrappedFun(this.#cPtr);
+        return enumValuesArray[val];
     }
 
     isNull() {
@@ -463,8 +464,10 @@ export class MgString {
     }
 
     toString() {
-        let wrappedFun = instance.cwrap('mg_string_data', 'string', ['i32']);
-        return wrappedFun(this.#cPtr);
+        let wrappedFun = instance.cwrap('mg_string_data', 'i32', ['i32']);
+        let data = wrappedFun(this.#cPtr);
+        let size = instance._mg_string_size(this.#cPtr);
+        return instance.UTF8ToString(data, size);
     }
 
     copy() {
@@ -674,10 +677,8 @@ export class MgRelationship {
     }
 
     properties() {
-        let wrappedFun = instance.cwrap('mg_relationship_properties', 'i32', [
-            'i32', 'i32'
-        ]);
-        return new MgMap(wrappedFun(this.#cPtr, pos));
+        let wrappedFun = instance.cwrap('mg_relationship_properties', 'i32', ['i32']);
+        return new MgMap(wrappedFun(this.#cPtr));
     }
 
     copy() {
@@ -716,7 +717,7 @@ export class MgUnboundRelationship {
     properties() {
         let wrappedFun =
             instance.cwrap('mg_unbound_relationship_properties', 'i32', ['i32']);
-        return new MgMap(wrappedFun(this.#cPtr, pos));
+        return new MgMap(wrappedFun(this.#cPtr));
     }
 
     copy() {
@@ -1155,9 +1156,7 @@ export class MgClient {
             });
 
         let memoryHandle = new MemoryHandle();
-        let ptr = memoryHandle.alloc(4);
         let ptrToPtr = memoryHandle.alloc(4);
-        instance.setValue(ptrToPtr, ptr, 'i32');
 
         // todo cancel on error async
         let maybeConnected = await wrappedFun(mgparamsPtr, ptrToPtr);
@@ -1166,7 +1165,6 @@ export class MgClient {
             return null;
         }
         let sessionPtr = instance.getValue(ptrToPtr, 'i32');
-
         memoryHandle.deallocAll();
         instance._mg_session_params_destroy(mgparamsPtr);
 
@@ -1179,7 +1177,6 @@ export class MgClient {
             ['number', 'string', 'number', 'number', 'number', 'number'], {
                 async: true
             });
-        // todo error handling
         let runResult =
             await mgSessionRun(this.#sessionPtr, query, null, null, null, null);
         if (runResult < 0) {
@@ -1195,37 +1192,31 @@ export class MgClient {
 
     async fetchOne() {
         let memoryHandle = new MemoryHandle();
-        let mgResult = memoryHandle.alloc(4);
         let ptrMgResult = memoryHandle.alloc(4);
-        instance.setValue(ptrMgResult, mgResult, 'i32');
-        let wrappedFun = instance.cwrap('mg_session_fetch', 'number',
-            ['number', 'number'], {
+        let wrappedFun = instance.cwrap('mg_session_fetch', 'i32',
+            ['i32', 'i32'], {
                 async: true
             });
-        // todo add error handling when websocket fails
         let result = await wrappedFun(this.#sessionPtr, ptrMgResult);
-        // todo fix allocations
         if (result != 1) {
             memoryHandle.deallocAll();
             return null;
         }
-
-        let mgList = resultRow(ptrMgResult);
+        let ptrRes = instance.getValue(ptrMgResult, 'i32');
+        let mgList = this.resultRow(ptrRes);
         memoryHandle.deallocAll();
         return mgList;
     }
 
     async fetchAll() {
         let arr = [];
-        let result;
-        while (result = await this.fetchOne()) {
-            if (result == null) {
-                // clean up
-                return null;
+        while (true) {
+            let result = await this.fetchOne();
+            if (result === null) {
+                return arr;
             }
-            arr.push(result)
+            arr.push(result);
         }
-        return arr;
     }
 
     async discardAll() {
@@ -1248,7 +1239,6 @@ export class MgClient {
 
     async commitTransaction() {
         let memoryHandle = new MemoryHandle();
-        let mgResult = memoryHandle.alloc(4);
         let ptrMgResult = memoryHandle.alloc(4);
         let wrappedFun = instance.cwrap('mg_session_commit_transaction', 'number',
             ['number', 'number'], {
@@ -1261,7 +1251,6 @@ export class MgClient {
 
     async rollbackTransaction() {
         let memoryHandle = new MemoryHandle();
-        let mgResult = memoryHandle._malloc(4);
         let ptrMgResult = memoryHandle._malloc(4);
         let wrappedFun = instance.cwrap('mg_session_rollback_transaction', 'number',
             ['number', 'number'], {
@@ -1275,12 +1264,13 @@ export class MgClient {
 
     resultRow(mgResult) {
         let wrappedFun =
-            instance.cwrap('mg_result_columns', 'number', ['number']);
-        return new MgList(wrappedFun(mgResult));
+            instance.cwrap('mg_result_row', 'number', ['number']);
+        let result = instance._mg_result_row(mgResult);
+        return new MgList(result);
     }
 
     resultColumns(mgResult) {
-        let wrappedFun = instance.cwrap('mg_result_row', 'number', ['number']);
+        let wrappedFun = instance.cwrap('mg_result_columns', 'number', ['number']);
         return new MgList(wrappedFun(mgResult));
     }
 
