@@ -1,8 +1,8 @@
 {
-  "name": "mgclient",
+  "name": "jsmgclient",
   "version": "0.0.1",
-  "description": "Memgraph db client adapter",
-  "main": "index.js",
+  "description": "Memgraph database adapter for JavaScript",
+  "main": "",
   "directories": {
     "example": "examples"
   },
@@ -13,8 +13,8 @@
     "type": "git",
     "url": "git+https://github.com/memgraph/jsmgclient.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Memgraph Contributors <tech@memgraph.com>",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/memgraph/jsmgclient/issues"
   },
