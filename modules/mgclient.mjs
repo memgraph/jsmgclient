@@ -2,8 +2,14 @@ export {
     default as factory
 }
 from "../examples/out.js"
-// export {default as factory} from '../modules/mgclient.mjs';
 
+/**
+ *  Simple class that handles WASM resources. Every Mg datatype is allocated internally 
+ *  by the C runtime. Therefore, these resources must be deallocated at the end of execution.
+ *  Although this simple construct is used as a global resource manager it can be easily extended 
+ *  by adding scoped resource capabilities. Howerver, unless proven in practice that this is needed,
+ *  it suffices to rely on this simple utility.
+ */
 class MgResourceManagerInternal {
     #resourceManager;
     constructor() {
@@ -37,7 +43,13 @@ class MgResourceManagerInternal {
 
 let resourceManager = new MgResourceManagerInternal();
 
-function errorOrValue(value) {
+/**
+ * Helper function that returns null if the Mg* internal pointer points to the memory address 0(NULL) or
+ * otherwise pushes the reference to the ResourceManager and returns back the reference.
+ * @param {All Mg* data types} value.
+ * @return {MgValue}.
+ */
+function errorOrPushToResourceManager(value) {
     if (value.transferToWasm() == 0) {
         return null
     }
@@ -47,32 +59,55 @@ function errorOrValue(value) {
 
 let instance = null;
 
-export function clientVersion() {
-    let wrappedFun = instance.cwrap('mg_client_version', 'string');
-    return wrappedFun();
-}
-
+/**
+ * Initializes mgclient. Users shall call this function before using any of the module exports.
+ * @param  {module} wasmInstance. The instance object retrieved from calling factory().then( instance => {} )
+ * @return {bool}. Returns true on success, false on failure.
+ */
 export function init(wasmInstance) {
     if (instance != null) {
         return null;
     }
     instance = wasmInstance;
-    return instance._mg_init();
+    return (instance._mg_init() == 0) ? true : false;
 }
 
+/**
+ * Returns the mgclient version.
+ * @return {string} 
+ */
+export function clientVersion() {
+    let wrappedFun = instance.cwrap('mg_client_version', 'string');
+    return wrappedFun();
+}
+
+/**
+ * Releases the internal memory allocated by the wasm mgclient.
+ */
+function releaseAll() {
+    resourceManager.releaseAll();
+}
+
+/**
+ * Finalizes and releases the internal resources. must be called by the users
+ * before the program executes.
+ */
 export function finalize() {
     resourceManager.releaseAll();
-    return instance._mg_finalize();
+    instance._mg_finalize();
 }
 
-export function releaseAll() {
-    resourceManager.releaseAll();
-}
-
+/**
+ * Returns the total memory resources held. Users shall not use this function.
+ * @return {int}
+ */
 export function resourcesTracked() {
     return resourceManager.resourcesTracked();
 }
 
+/**
+ * Enum representing the possible data types an MgValue can hold.
+ */
 export class MgValueTypeEnum {
     static MG_VALUE_TYPE_NULL = new MgValueTypeEnum("MG_VALUE_TYPE_NULL");
     static MG_VALUE_TYPE_BOOL = new MgValueTypeEnum("MG_VALUE_TYPE_BOOL");
@@ -111,12 +146,20 @@ export class MgValueTypeEnum {
     }
 };
 
+/**
+ * Datatype to represent a variant of values defined in MgValueTypeEnum.
+ */
 export class MgValue {
     #cPtr;
     constructor(cPtr) {
         this.#cPtr = cPtr;
     }
 
+
+    /**
+     * Returns a string representing the underlyine datatype of the variant.
+     * @return {string}
+     */
     getType() {
         let wrappedFun = instance.cwrap('mg_value_get_type', 'i32', ['i32']);
         let enumValuesArray = Object.keys(MgValueTypeEnum);
@@ -124,10 +167,18 @@ export class MgValue {
         return enumValuesArray[val];
     }
 
+    /**
+     * Returns if the variant is empty.
+     * @return {bool}
+     */
     isNull() {
         return this.#cPtr == 0;
     }
 
+    /**
+     * Returns the bool value held in the variant or otherwise null.
+     * @return {bool, null}.
+     */
     getBool() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_BOOL.name) {
@@ -137,6 +188,10 @@ export class MgValue {
         return (wrappedFun(this.#cPtr) == 0) ? false : true;
     }
 
+    /**
+     * Returns the integer held in the variant or otherwise null.
+     * @return {integer, null}.
+     */
     getInteger() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_INTEGER.name) {
@@ -146,6 +201,10 @@ export class MgValue {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns the float held in the variant or otherwise null.
+     * @return {float, null}.
+     */
     getFloat() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_FLOAT.name) {
@@ -155,6 +214,10 @@ export class MgValue {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns the string held in the variant or otherwise null.
+     * @return {string, null}.
+     */
     getMgString() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_STRING.name) {
@@ -164,6 +227,10 @@ export class MgValue {
         return new MgString(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgList held in the variant or otherwise null.
+     * @return {MgList, null}.
+     */
     getMgList() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LIST.name) {
@@ -173,6 +240,10 @@ export class MgValue {
         return new MgList(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgMap held in the variant or otherwise null.
+     * @return {MgMap, null}.
+     */
     getMgMap() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_MAP.name) {
@@ -182,6 +253,10 @@ export class MgValue {
         return new MgMap(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgNode held in the variant or otherwise null.
+     * @return {MgNode, null}.
+     */
     getMgNode() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_NODE.name) {
@@ -191,6 +266,10 @@ export class MgValue {
         return new MgNode(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgRelationship held in the variant or otherwise null.
+     * @return {MgRelationship, null}.
+     */
     getMgRelationship() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_RELATIONSHIP.name) {
@@ -200,6 +279,10 @@ export class MgValue {
         return new MgRelationship(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgUnboundRelationship held in the variant or otherwise null.
+     * @return {MgUnboundRelationship, null}.
+     */
     getMgUnboundRelationship() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_UNBOUND_RELATIONSHIP.name) {
@@ -210,6 +293,10 @@ export class MgValue {
         return new MgUnboundRelationship(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgPath held in the variant or otherwise null.
+     * @return {MgPath, null}.
+     */
     getMgPath() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_PATH.name) {
@@ -219,6 +306,10 @@ export class MgValue {
         return new MgPath(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgDate held in the variant or otherwise null.
+     * @return {MgDate, null}.
+     */
     getMgDate() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE.name) {
@@ -228,6 +319,10 @@ export class MgValue {
         return new MgDate(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgTime held in the variant or otherwise null.
+     * @return {MgTime, null}.
+     */
     getMgTime() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_TIME.name) {
@@ -237,6 +332,10 @@ export class MgValue {
         return new MgTime(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgLocalTime held in the variant or otherwise null.
+     * @return {MgLocalTime, null}.
+     */
     getMgLocalTime() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LOCAL_TIME.name) {
@@ -246,6 +345,10 @@ export class MgValue {
         return new MgLocalTime(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgDateTime held in the variant or otherwise null.
+     * @return {MgDateTime, null}.
+     */
     getMgDateTime() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE_TIME.name) {
@@ -255,6 +358,10 @@ export class MgValue {
         return new MgDateTime(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgDateTimeZoneId held in the variant or otherwise null.
+     * @return {MgDateTimeZoneId, null}.
+     */
     getMgDateTimeZoneId() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DATE_TIME_ZONE_ID.name) {
@@ -265,6 +372,10 @@ export class MgValue {
         return new MgDateTimeZoneId(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgLocalDateTime held in the variant or otherwise null.
+     * @return {MgLocalDateTime, null}.
+     */
     getMgLocalDateTime() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_LOCAL_DATE_TIME.name) {
@@ -275,6 +386,10 @@ export class MgValue {
         return new MgLocalDateTime(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgDuration held in the variant or otherwise null.
+     * @return {MgDuration, null}.
+     */
     getMgDuration() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_DURATION.name) {
@@ -284,6 +399,10 @@ export class MgValue {
         return new MgDuration(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgPoint2D held in the variant or otherwise null.
+     * @return {MgPoint2D, null}.
+     */
     getPoint2D() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_2D.name) {
@@ -293,6 +412,10 @@ export class MgValue {
         return new MgPoint2D(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns the MgPoint3D held in the variant or otherwise null.
+     * @return {MgPoint3D, null}.
+     */
     getMgPoint3D() {
         let type = this.getType();
         if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_3D.name) {
@@ -302,152 +425,284 @@ export class MgValue {
         return new MgLocalPoint3D(wrappedFun(this.#cPtr));
     }
 
-    copy(instance) {
+    /**
+     * Returns a copy of the MgValue (allocates memory on the C runtime)
+     * @return {MgValue, null}. null is returned if the allocation fails.
+     */
+    copy() {
         let wrappedFun = instance.cwrap('mg_value_copy', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_value_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
 
+    /**
+     * Constructs an empty MgValue.
+     * @return {MgValue}.
+     */
     static makeNull() {
         let result = new MgValue(instance._mg_value_make_null());
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Constructs an MgValue holding a bool with value val.
+     * @param {bool} val.
+     * @return {MgValue}.
+     */
     static makeBool(val) {
         let bool = (val == false) ? 0 : 1;
         let result = new MgValue(instance._mg_value_make_bool(1));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Constructs an MgValue holding an integer with value val.
+     * @param {integer} val.
+     * @return {MgValue}.
+     */
     static makeInteger(val) {
         let result = new MgValue(instance._mg_value_make_integer(val));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Constructs an MgValue holding a float with value val.
+     * @param {float} val.
+     * @return {MgValue}.
+     */
     static makeFloat(val) {
         let wrappedFun = instance.cwrap('mg_value_copy', 'i32', ['double']);
         let result = new MgValue(instance._mg_value_make_float(val));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Constructs an MgValue holding a string with value str.
+     * @param {string} str.
+     * @return {MgValue}.
+     */
     static makeString(str) {
         let wrappedFun =
             instance.cwrap('mg_value_make_string', 'i32', ['string']);
         let result = new MgValue(wrappedFun(str));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Constructs an MgValue holding a copy of the mgString with value mgString.
+     * @param {MgString} mgString.
+     * @return {MgValue}.
+     */
     static makeString2(mgString) {
-        let wrappedFun = instance.cwrap('mg_value_make_string2', 'i32', ['i32']);
-        let result = new MgValue(wrappedFun(mgString.transferToWasm()));
-        return errorOrValue(result);
+        let wrappedFun = instance.cwrap('mg_value_make_string', 'i32', ['string']);
+        let result = new MgValue(wrappedFun(mgString.toString()));
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Helper function that decorates errorOrPushToResourceManager by also stop managing the mgType.
+     * @param {All Mg* data types} value.
+     * @param {All Mg* data types} stopManagingValue.
+     * @return {the Mg datatype, null}
+     */
+    errorOrStopManagingAndPushToResourceManager(value, stopManagingValue) {
+        let maybeValue = errorOrPushToResourceManager(value);
+        if (maybeValue != null) {
+            resourceManager.stopManaging(stopManagingValue);
+        }
+        return maybeValue;
+    }
+
+    /**
+     * Constructs an MgValue holding an MgList.
+     * @param {float} val.
+     * @return {MgValue}.
+     */
     static makeList(mgList) {
         let wrappedFun = instance.cwrap('mg_value_make_list', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgList.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgList);
     }
 
+    /**
+     * Constructs an MgValue holding an MgMap.
+     * @param {MgMap} mgMap.
+     * @return {MgValue}.
+     */
     static makeMap(mgMap) {
         let wrappedFun = instance.cwrap('mg_value_make_map', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgMap.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgMap);
     }
 
+    /**
+     * Constructs an MgValue holding an MgNode.
+     * @param {MgNode} mgNode.
+     * @return {MgValue}.
+     */
     static makeNode(mgNode) {
         let wrappedFun = instance.cwrap('mg_value_make_node', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgNode.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgNode);
     }
 
+    /**
+     * Constructs an MgValue holding an MgRelationship.
+     * @param {MgRelationship} mgRelationship.
+     * @return {MgValue}.
+     */
     static makeRelationship(mgRelationship) {
         let wrappedFun =
             instance.cwrap('mg_value_make_relationship', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgRelationship.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgRelationship);
     }
 
-    static makeUnboundRelationship(mgValueMakeUnboundRelationship) {
+    /**
+     * Constructs an MgValue holding an MgUnboundRelationship.
+     * @param {MgValueUnboundRelationship} mgValueUnboundRelationship.
+     * @return {MgValue}.
+     */
+    static makeUnboundRelationship(mgValueUnboundRelationship) {
         let wrappedFun =
             instance.cwrap('mg_value_make_unbound_relationship', 'i32', ['i32']);
         let result = new MgValue(
             wrappedFun(mgValueMakeUnboundRelationship.transferToWasm()));
-        return value;
+        return errorOrStopManagingAndPushToResourceManager(result, mgValueUnboundRelationship);
     }
 
-    static MgValueMakePath(mgPath) {
+    /**
+     * Constructs an MgValue holding an MgPath.
+     * @param {MgPath} mgPath.
+     * @return {MgValue}.
+     */
+    static makePath(mgPath) {
         let wrappedFun = instance.cwrap('mg_value_make_path', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgPath.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgPath);
     }
 
-    static MgValueMakeDate(mgDate) {
+    /**
+     * Constructs an MgValue holding an MgDate.
+     * @param {MgPath} mgDate.
+     * @return {MgValue}.
+     */
+    static makeDate(mgDate) {
         let wrappedFun = instance.cwrap('mg_value_make_date', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgDate.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgDate);
     }
 
-    static MgValueMakeTime(mgTime) {
+    /**
+     * Constructs an MgValue holding an MgTime.
+     * @param {MgTime} mgTime.
+     * @return {MgValue}.
+     */
+    static makeTime(mgTime) {
         let wrappedFun = instance.cwrap('mg_value_make_time', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgTime.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgTime);
     }
 
-    static MgValueMakeLocalTime(mgLocalTime) {
+    /**
+     * Constructs an MgValue holding an MgLocalTime.
+     * @param {MgLocalTime} mgLocalTime.
+     * @return {MgValue}.
+     */
+    static makeLocalTime(mgLocalTime) {
         let wrappedFun =
             instance.cwrap('mg_value_make_local_time', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgLocalTime.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgLocalTime);
     }
 
-    static MgValueMakeDateTime(mgDateTime) {
+    /**
+     * Constructs an MgValue holding an MgDateTime.
+     * @param {MgDateTime} mgDateTime.
+     * @return {MgValue}.
+     */
+    static makeDateTime(mgDateTime) {
         let wrappedFun =
             instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgDateTime.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgDateTime);
     }
 
-    static MgValueMakeTimeZoneId(mgDateTimeZoneId) {
+    /**
+     * Constructs an MgValue holding an MgTimeZoneId.
+     * @param {MgTimeZoneId} mgTimeZoneId.
+     * @return {MgValue}.
+     */
+    static makeTimeZoneId(mgDateTimeZoneId) {
         let wrappedFun =
             instance.cwrap('mg_value_make_date_time_zone_id', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgDateTimeZoneId.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgDateTimeZoneId);
     }
 
-    static MgValueMakeLocalDateTime(mgLocalDateTime) {
+    /**
+     * Constructs an MgValue holding an MgLocalDateTime.
+     * @param {MgLocalDateTime} mgLocalDateTime.
+     * @return {MgValue}.
+     */
+    static makeLocalDateTime(mgLocalDateTime) {
         let wrappedFun =
             instance.cwrap('mg_value_make_local_date_time', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgLocalDateTime.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgLocalDateTime);
     }
 
-    static MgValueMakeDuration(mgDuration) {
+    /*
+     * Constructs an MgValue holding an MgDuration.
+     * @param {MgDuration} mgDuration.
+     * @return {MgValue}.
+     */
+    static makeDuration(mgDuration) {
         let wrappedFun = instance.cwrap('mg_value_make_duration', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgDuration.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result, mgDuration);
     }
 
-    static MgValueMakePoint2d(mgPoint2d) {
+    /*
+     * Constructs an MgValue holding an MgPoint2D.
+     * @param {MgPoint2D} mgPoint2D.
+     * @return {MgValue}.
+     */
+    static makePoint2d(mgPoint2d) {
         let wrappedFun = instance.cwrap('mg_value_make_point_2d', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgValueMakePoint2d.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result);
     }
 
-    static MgValueMakePoint3d(mgPoint3D) {
+    /*
+     * Constructs an MgValue holding an MgPoint3D.
+     * @param {MgPoint3D} mgPoint3D.
+     * @return {MgValue}.
+     */
+    static makePoint3d(mgPoint3D) {
         let wrappedFun =
             instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(mgPoint3D.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrStopManagingAndPushToResourceManager(result);
     }
 };
 
@@ -457,12 +712,21 @@ export class MgString {
         this.#cPtr = cPtr;
     }
 
-    static make(string) {
+    /*
+     * Constructs an MgString (allocates memory with the C runtime).
+     * @param {string} str.
+     * @return {MgString}.
+     */
+    static make(str) {
         let wrappedFun = instance.cwrap('mg_string_make', 'i32', ['string']);
-        let result = new MgString(wrappedFun(string));
-        return errorOrValue(result);
+        let result = new MgString(wrappedFun(str));
+        return errorOrPushToResourceManager(result);
     }
 
+    /*
+     * Returns a JS string representation of the MgString.
+     * @return {string}.
+     */
     toString() {
         let wrappedFun = instance.cwrap('mg_string_data', 'i32', ['i32']);
         let data = wrappedFun(this.#cPtr);
@@ -470,17 +734,31 @@ export class MgString {
         return instance.UTF8ToString(data, size);
     }
 
+    /*
+     * Copies the underlyine MgString (allocates memory with the C runtime).
+     * @return {MgString}.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_string_copy', 'i32', ['i32']);
         let result = new MgString(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_string_destroy', 'void', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -495,7 +773,7 @@ export class MgList {
     static make(capacity) {
         let wrappedFun = instance.cwrap('mg_list_make_empty', 'i32', ['i32']);
         let result = new MgList(wrappedFun(capacity));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
     size() {
@@ -519,17 +797,31 @@ export class MgList {
         return (result == 0) ? null : new MgValue(result);
     }
 
+    /**
+     * Returns a copy of the MgList (allocates memory on the C runtime)
+     * @return {MgList, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_list_copy', 'i32', ['i32']);
         let result = new MgList(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_list_destroy', 'i32', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -544,7 +836,7 @@ export class MgMap {
     static make(capacity) {
         let wrappedFun = instance.cwrap('mg_map_make_empty', 'i32', ['i32']);
         let result = new MgMap(wrappedFun(capacity));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
     size() {
@@ -584,17 +876,31 @@ export class MgMap {
         return (result == 0) ? null : new MgValue(result);
     }
 
+    /**
+     * Returns a copy of the MgMap (allocates memory on the C runtime)
+     * @return {MgMap, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_map_copy', 'i32', ['i32']);
         let result = new MgMap(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_map_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -610,7 +916,7 @@ export class MgNode {
     //  static make(id, mgListLabels, mgMapProperties) {
     //    let wrappedFun = instance.cwrap('mg_map_make_empty', 'i32', [ 'i32' ]);
     //    let result = new MgMap(wrappedFun(capacity));
-    //    return errorOrValue(result);
+    //    return errorOrPushToResourceManager(result);
     //  }
 
     id() {
@@ -633,17 +939,31 @@ export class MgNode {
         return new MgMap(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns a copy of the MgNode (allocates memory on the C runtime)
+     * @return {MgNode, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_node_copy', 'i32', ['i32']);
         let result = MgNode(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_map_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -681,18 +1001,32 @@ export class MgRelationship {
         return new MgMap(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns a copy of the MgRelationship (allocates memory on the C runtime)
+     * @return {MgRelationship, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_relationship_copy', 'i32', ['i32']);
         let result = MgRelationship(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_relationship_destroy', 'void',
             ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -720,19 +1054,33 @@ export class MgUnboundRelationship {
         return new MgMap(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Returns a copy of the MgUnboundRelationship (allocates memory on the C runtime)
+     * @return {MgUnboundRelationship, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun =
             instance.cwrap('mg_unbound_relationship_copy', 'i32', ['i32']);
         let result = new MgUnboundRelationship(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_unbound_relationship_destroy', 'void',
             ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -766,17 +1114,31 @@ export class MgPath {
         return wrappedFun(this.#cPtr, pos);
     }
 
+    /**
+     * Returns a copy of the MgPath (allocates memory on the C runtime)
+     * @return {MgPath, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_path_copy', 'i32', ['i32']);
         let result = new MgPath(this.#cPtr);
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_path_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -793,17 +1155,31 @@ export class MgDate {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgDate (allocates memory on the C runtime)
+     * @return {MgDate, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_date_copy', 'i32', ['i32']);
         let result = new MgDate(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_map_destroy', 'i32', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -826,17 +1202,31 @@ export class MgTime {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgTime (allocates memory on the C runtime)
+     * @return {MgTime, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_time_tz_copy', 'i32', ['i32']);
         let result = new MgTime(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_map_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -853,16 +1243,30 @@ export class MgLocalTime {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgLocalTime (allocates memory on the C runtime)
+     * @return {MgLocalTime, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_local_time_copy', 'i32', ['i32']);
         return MgDate(wrappedFun(this.#cPtr));
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_local_time_destroy', 'void', ['i32']);
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -891,17 +1295,31 @@ export class MgDateTime {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgDateTime (allocates memory on the C runtime)
+     * @return {MgDateTime, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun = instance.cwrap('mg_date_time_copy', 'i32', ['i32']);
         let result = new MgDateTime(wrappedFun(this.#cPtr));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_local_time_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -931,19 +1349,33 @@ export class MgDateTimeZoneId {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgDateTimeZoneId (allocates memory on the C runtime)
+     * @return {MgDateTimeZoneId, null}. null is returned if the allocation fails.
+     */
     copy() {
         let wrappedFun =
             instance.cwrap('mg_date_time_zone_id_copy', 'i32', ['i32']);
         let result = new MgDateTime(this.#cPtr);
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun =
             instance.cwrap('mg_date_time_zone_id_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -953,13 +1385,6 @@ export class MgLocalDateTime {
     #cPtr;
     constructor(cPtr) {
         this.#cPtr = cPtr;
-    }
-
-    static make(seconds, nanoseconds) {
-        let wrappedFun =
-            instance.cwrap('mg_local_date_time_make', 'i32', ['i32', 'i32']);
-        let result = new MgLocalDateTime(wrappedFun(seconds, nanoseconds));
-        return errorOrValue(result);
     }
 
     seconds() {
@@ -974,20 +1399,34 @@ export class MgLocalDateTime {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgLocalDateTime (allocates memory on the C runtime)
+     * @return {MgLocalDateTime, null}. null is returned if the allocation fails.
+     */
     copy(mgLocalDateTime) {
         let wrappedFun =
             instance.cwrap('mg_local_date_time_copy', 'i32', ['i32']);
         let value =
             new MgLocalDateTime(wrappedFun(mgLocalDateTime.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun =
             instance.cwrap('mg_local_date_time_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -1020,17 +1459,31 @@ export class MgDuration {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgDuration (allocates memory on the C runtime)
+     * @return {MgDuration, null}. null is returned if the allocation fails.
+     */
     copy(mgDuration) {
         let wrappedFun = instance.cwrap('mg_duration_copy', 'i32', ['i32']);
         let result = new MgDuration(wrappedFun(mgDuration.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_duration_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -1057,17 +1510,31 @@ export class MgPoint2D {
         return wrappedFun(this.#cPtr);
     }
 
+    /**
+     * Returns a copy of the MgPoint2D (allocates memory on the C runtime)
+     * @return {MgPoint2D, null}. null is returned if the allocation fails.
+     */
     copy(mgPoint2d) {
         let wrappedFun = instance.cwrap('mg_point_2d_copy', 'i32', ['i32']);
         let value = MgPoint2D(wrappedFun(mgPoint2d.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
         let wrappedFun = instance.cwrap('mg_point_2d_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
@@ -1099,22 +1566,39 @@ export class MgPoint3D {
         return wrappedFun(this.#cPtr);
     }
 
-    copy(mgPoint2d) {
-        let wrappedFun = instance.cwrap('mg_point_2d_copy', 'i32', ['i32']);
+    /**
+     * Returns a copy of the MgPoint3D (allocates memory on the C runtime)
+     * @return {MgPoint3D, null}. null is returned if the allocation fails.
+     */
+    copy(mgPoint3d) {
+        let wrappedFun = instance.cwrap('mg_point_3d_copy', 'i32', ['i32']);
         let result = new MgPoint3D(wrappedFun(mgPoint2d.transferToWasm()));
-        return errorOrValue(result);
+        return errorOrPushToResourceManager(result);
     }
 
+    /**
+     * Destructs the memory allocated by the C runtime.
+     * This function is used by the ResourceManager to destruct at the end of execution.
+     */
     destroy() {
-        let wrappedFun = instance.cwrap('mg_point_2d_destroy', 'void', ['i32']);
+        let wrappedFun = instance.cwrap('mg_point_3d_destroy', 'void', ['i32']);
         wrappedFun(this.#cPtr);
     }
 
+    /**
+     * This function shall not be used by this module's consumers.
+     *
+     * Internal function to pass the MgValue to the underlyine wasm mgclient.
+     * @return {int}. Memory address of the underlyine object.
+     */
     transferToWasm() {
         return this.#cPtr;
     }
 };
 
+/**
+ * Helper class to dealloacate resources in one call.
+ */
 class MemoryHandle {
     #memArray;
     constructor() {
@@ -1135,14 +1619,26 @@ class MemoryHandle {
     }
 };
 
+
+/**
+ * Main class used by the module consumers.
+ * This class is the interface between the jsclient and Memgraph database.
+ */
 export class MgClient {
     #sessionPtr;
     constructor(sessionPtr) {
         this.#sessionPtr = sessionPtr;
     }
 
-    // todo expose ssl
+    /**
+     * This function connects the client to the memgraph instance. On success returns an object of this class.
+     * On failure it returns null.
+     * @param {string} host. The host address of the memgraph instance.
+     * @param {port} port. The port address of the memgraph instance.
+     * @return {MgClient, null}.
+     */
     static async connect(host, port) {
+        // todo expose ssl
         let mgparamsPtr = instance._mg_session_params_make();
         let mgSessionParamsSetHost = instance.cwrap('mg_session_params_set_host',
             'void', ['number', 'string']);
@@ -1171,6 +1667,12 @@ export class MgClient {
         return new MgClient(sessionPtr, instance);
     }
 
+    /**
+     * This function executes a query on the connected instance. 
+     * @param {string} host. The host address of the memgraph instance.
+     * @param {port} port. The port address of the memgraph instance.
+     * @return {bool}. On success true, false otherwise.
+     */
     async execute(query) {
         let mgSessionRun = instance.cwrap(
             'mg_session_run', 'number',
@@ -1182,14 +1684,21 @@ export class MgClient {
         if (runResult < 0) {
             return false;
         }
-        return (this.pull(instance) < 0) ? false : true;
+        return (this.#pull(instance) < 0) ? false : true;
     }
 
-    pull() {
+    #pull() {
         let pullResult = instance._mg_session_pull(this.#sessionPtr, 0);
         return pullResult;
     }
 
+    /**
+     * This function fetches a row from the executed query result.
+     * Do not hold references of subsequent fetches because the underlyine C objects are deallocated.
+     * If you want to keep the results, perform a deep copy of the result mgList by calling the member 
+     * method copy().
+     * @return {mgList, null}. null when no results are available.
+     */
     async fetchOne() {
         let memoryHandle = new MemoryHandle();
         let ptrMgResult = memoryHandle.alloc(4);
@@ -1203,31 +1712,31 @@ export class MgClient {
             return null;
         }
         let ptrRes = instance.getValue(ptrMgResult, 'i32');
-        let mgList = this.resultRow(ptrRes);
+        let mgList = this.#resultRow(ptrRes);
         memoryHandle.deallocAll();
         return mgList;
     }
 
-    async fetchAll() {
-        let arr = [];
-        while (true) {
-            let result = await this.fetchOne();
-            if (result === null) {
-                return arr;
-            }
-            arr.push(result);
-        }
-    }
 
+    /**
+     * Discards all the available results.
+     */
     async discardAll() {
         while (await FetchOne())
         ;
     }
 
+    /**
+     * Destroys the session. Must be called at the end of program execution.
+     */
     destroySession() {
         instance._mg_session_destroy(this.#sessionPtr);
     }
 
+    /**
+     * Begins a new transaction which must be manually commited to the memgraph instance.
+     * Calls to execute() will not commit unless explicitly done.
+     */
     async beginTransaction() {
         // check async here
         let wrappedFun = instance.cwrap('mg_session_begin_transaction', 'number',
@@ -1237,6 +1746,9 @@ export class MgClient {
         return wrappedFun(this.#sessionPtr, null) == 0;
     }
 
+    /**
+     * Commits the transaction on the memgraph instance.
+     */
     async commitTransaction() {
         let memoryHandle = new MemoryHandle();
         let ptrMgResult = memoryHandle.alloc(4);
@@ -1249,6 +1761,9 @@ export class MgClient {
         return result;
     }
 
+    /**
+     * Rollbacks the transaction on the memgraph instance.
+     */
     async rollbackTransaction() {
         let memoryHandle = new MemoryHandle();
         let ptrMgResult = memoryHandle._malloc(4);
@@ -1262,19 +1777,21 @@ export class MgClient {
         return result;
     }
 
-    resultRow(mgResult) {
+    #resultRow(mgResult) {
         let wrappedFun =
             instance.cwrap('mg_result_row', 'number', ['number']);
         let result = instance._mg_result_row(mgResult);
         return new MgList(result);
     }
 
-    resultColumns(mgResult) {
+    //todo expose this
+    #resultColumns(mgResult) {
         let wrappedFun = instance.cwrap('mg_result_columns', 'number', ['number']);
         return new MgList(wrappedFun(mgResult));
     }
 
-    resultSummary(mgResult) {
+    //todo expose this
+    #resultSummary(mgResult) {
         let wrappedFun =
             instance.cwrap('mg_result_summary', 'number', ['number']);
         return new MgMap(wrappedFun(mgResult));
