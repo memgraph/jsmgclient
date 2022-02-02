@@ -1722,7 +1722,7 @@ export class MgClient {
      * Discards all the available results.
      */
     async discardAll() {
-        while (await FetchOne())
+        while (await this.fetchOne())
         ;
     }
 

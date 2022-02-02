@@ -14,12 +14,12 @@ mg.factory().then(async (instance) => {
     }
 
     let createQuery = "CREATE (n:Person {name: 'John'})-[e:KNOWS {from: 'Work'}]->(m:Person {name: 'Steve'}) RETURN n, e, m";
-    await mgClient.execute(createQuery);
-    let res = await mgClient.fetchAll();
-    if (res == null) {
+    let res = await mgClient.execute(createQuery);
+    if (res == false) {
         cleanUp(mgClient);
         throw "Error while fetching the result";
     }
+    await mgClient.discardAll();
 
     await mgClient.execute("MATCH (n) RETURN n");
     let row;

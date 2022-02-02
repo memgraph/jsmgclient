@@ -9,10 +9,14 @@ mg.factory().then(async (instance) => {
         throw "Could not connect to memgraph!";
     }
     let result = await mgClient.execute("CREATE (n:Person { name: 'Kostas', Age: '27' })");
-    let res = await mgClient.fetchAll();
-    if (res == null) {
-        throw "Error while fetching the result";
+    await mgClient.discardAll();
+    result = await mgClient.execute("MATCH (n) return n");
+    let totalRows = 0;
+    let row;
+    while (row = await mgClient.fetchOne()) {
+        ++totalRows;
     }
+    console.log("total rows " + totalRows);
     mgClient.destroySession();
     mg.finalize();
 });
