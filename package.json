@@ -21,5 +21,8 @@
   "homepage": "https://github.com/memgraph/jsmgclient#readme",
   "dependencies": {
     "ws": "^0.4.32"
+  },
+  "devDependencies": {
+    "mocha": "^9.2.0"
   }
 }
