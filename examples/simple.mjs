@@ -1,8 +1,7 @@
 import * as mg from '../modules/mgclient.mjs';
 
-mg.factory().then(async (instance) => {
+mg.loadWasm().then(async () => {
     console.log("Hello world, jsmgclient");
-    mg.init(instance);
     console.log("version is " + mg.clientVersion());
     let mgClient = await mg.MgClient.connect("0.0.0.0", 7687);
     if (mgClient == null) {

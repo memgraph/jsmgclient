@@ -3,8 +3,7 @@ import * as mg from '../modules/mgclient.mjs';
 
 describe('#Interfaces and memory manager', function() {
     it('', function() {
-        mg.factory().then((instance) => {
-            mg.init(instance);
+        mg.loadWasm().then(() => {
             assert.equal("1.2.0", mg.clientVersion());
 
             //bool
@@ -14,7 +13,7 @@ describe('#Interfaces and memory manager', function() {
             assert.equal(mg.resourcesTracked(), 1);
 
             //integer
-            let mgValueInt = mg.MgValue.makeInteger(10);
+            let mgValueInt = mg.MgValue.makeInteger(BigInt(10));
             assert.equal(mgValueInt.getInteger(), 10);
             assert.equal(mgValueInt.getFloat(), null);
             assert.equal(mg.resourcesTracked(), 2);
@@ -69,31 +68,48 @@ describe('#Interfaces and memory manager', function() {
             assert.equal(mg.resourcesTracked(), 8);
             assert.equal(mgMap.at("Kostas").getInteger(), 10);
             assert.equal(mgMap.size(), 1);
-            mgMap.insert(diamondHandsStr.toString(), mgValueBool);
-            assert.equal(mg.resourcesTracked(), 7);
+            mgValueBool = mg.MgValue.makeBool(true);
+            assert.equal(mg.resourcesTracked(), 9);
+            mgMap.insert(diamondHandsStr, mgValueBool);
+            assert.equal(mg.resourcesTracked(), 8);
             assert.equal(mgMap.size(), 2);
-            //check this
-            //console.log("Value: " + mgMap.insertWithMgStringKey(diamondHandsStr, mgValueBool));
-            //assert.equal(mg.resourcesTracked(), 6);
-            //assert.equal(mgMap.at("Hello world").getBool(), true);
-            assert.equal(mgMap.at(diamondHandsStr.toString()).getBool(), true);
+            assert.equal(mgMap.at(diamondHandsStr).getBool(), true);
+
             let copiedMgMap = mgMap.copy();
             assert.equal(copiedMgMap.size(), 2);
-            assert.equal(mg.resourcesTracked(), 8);
+            assert.equal(mg.resourcesTracked(), 9);
 
-            //MgNode
-            //let mgNode = mg.MgNode.make(1, labels, props);
-            //assert.equal(mgNode.id(), 1);
-            //assert.equal(mgNode.labelCount(), expectedCount);
-            //assert.equal(mgNode.labelAtPos(pos), expected);
-            //assert.equal(mgNode.properties(pos), expected);
-            //assert.equal(mgNode.copy(pos), expected);
-            //MgRelationship
-            //MgUnboundRelationship
             //MgDate
-            //MgLocalTime
-            //MgLocalDateTime
+            let mgDate = mg.MgDate.make(100n);
+            assert.equal(mgDate.days(), 100);
+            assert.equal(mg.resourcesTracked(), 10);
+            let copyDate = mgDate.copy();
+            assert.equal(mg.resourcesTracked(), 11);
+
             //MgDuration
+            let mgDuration = mg.MgDuration.make(10n, 2n, 10n, 20n);
+            assert.equal(mg.resourcesTracked(), 12);
+            assert.equal(mgDuration.months(), 10);
+            assert.equal(mgDuration.days(), 2);
+            assert.equal(mgDuration.seconds(), 10);
+            assert.equal(mgDuration.nanoseconds(), 20);
+            let copyDuration = mgDuration.copy();
+            assert.equal(mg.resourcesTracked(), 13);
+
+            //MgLocalTime
+            let mgLocalTime = mg.MgLocalTime.make(1000);
+            assert.equal(mg.resourcesTracked(), 14);
+            assert.equal(mgLocalTime.nanoseconds(), 1000);
+            let copyLocalTime = mgLocalTime.copy();
+            assert.equal(mg.resourcesTracked(), 15);
+
+            //MgLocalDateTime
+            let mgLocalDateTime = mg.MgLocalDateTime.make(10, 20);
+            assert.equal(mg.resourcesTracked(), 16);
+            assert.equal(mgLocalDateTime.seconds(), 10);
+            assert.equal(mgLocalDateTime.nanoseconds(), 20);
+            let copyLocalDateTime = mgLocalDateTime.copy();
+            assert.equal(mg.resourcesTracked(), 17);
         });
     });
 });

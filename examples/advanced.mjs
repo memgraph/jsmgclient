@@ -5,8 +5,7 @@ function cleanUp(mgClient) {
     mg.finalize();
 }
 
-mg.factory().then(async (instance) => {
-    mg.init(instance);
+mg.loadWasm().then(async () => {
     let mgClient = await mg.MgClient.connect("0.0.0.0", 7687);
     if (mgClient == null) {
         cleanUp(mgClient);
