@@ -76,9 +76,9 @@ function init(wasmInstance) {
  * @return {
  */
 export function loadWasm() {
-  return loadWasmMgclient().then((instance) => {
-    init(instance);
-  });
+    return loadWasmMgclient().then((instance) => {
+        init(instance);
+    });
 }
 
 /**
@@ -407,37 +407,37 @@ export class MgValue {
         let wrappedFun = instance.cwrap('mg_value_duration', 'i32', ['i32']);
         return new MgDuration(wrappedFun(this.#cPtr));
     }
-// Not supported by memgraph yet
-//    /**
-//     * Returns the MgPoint2D held in the variant or otherwise null.
-//     * @return {MgPoint2D, null}.
-//     */
-//    getPoint2D() {
-//        let type = this.getType();
-//        if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_2D.name) {
-//            return null;
-//        }
-//        let wrappedFun = instance.cwrap('mg_value_point_2d', 'i32', ['i32']);
-//        return new MgPoint2D(wrappedFun(this.#cPtr));
-//    }
-//
-//    /**
-//     * Returns the MgPoint3D held in the variant or otherwise null.
-//     * @return {MgPoint3D, null}.
-//     */
-//    getMgPoint3D() {
-//        let type = this.getType();
-//        if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_3D.name) {
-//            return null;
-//        }
-//        let wrappedFun = instance.cwrap('mg_value_point_3d', 'i32', ['i32']);
-//        return new MgLocalPoint3D(wrappedFun(this.#cPtr));
-//    }
-//
-//    /**
-//     * Returns a copy of the MgValue (allocates memory on the C runtime)
-//     * @return {MgValue, null}. null is returned if the allocation fails.
-//     */
+    // Not supported by memgraph yet
+    //    /**
+    //     * Returns the MgPoint2D held in the variant or otherwise null.
+    //     * @return {MgPoint2D, null}.
+    //     */
+    //    getPoint2D() {
+    //        let type = this.getType();
+    //        if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_2D.name) {
+    //            return null;
+    //        }
+    //        let wrappedFun = instance.cwrap('mg_value_point_2d', 'i32', ['i32']);
+    //        return new MgPoint2D(wrappedFun(this.#cPtr));
+    //    }
+    //
+    //    /**
+    //     * Returns the MgPoint3D held in the variant or otherwise null.
+    //     * @return {MgPoint3D, null}.
+    //     */
+    //    getMgPoint3D() {
+    //        let type = this.getType();
+    //        if (type != MgValueTypeEnum.MG_VALUE_TYPE_POINT_3D.name) {
+    //            return null;
+    //        }
+    //        let wrappedFun = instance.cwrap('mg_value_point_3d', 'i32', ['i32']);
+    //        return new MgLocalPoint3D(wrappedFun(this.#cPtr));
+    //    }
+    //
+    //    /**
+    //     * Returns a copy of the MgValue (allocates memory on the C runtime)
+    //     * @return {MgValue, null}. null is returned if the allocation fails.
+    //     */
     copy() {
         let wrappedFun = instance.cwrap('mg_value_copy', 'i32', ['i32']);
         let result = new MgValue(wrappedFun(this.#cPtr));
@@ -490,12 +490,12 @@ export class MgValue {
      */
     static makeInteger(val) {
         let wrappedFun;
-//        if(val instanceof BigInt) {
-          wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['i64']);
-//        }
-//        else {
-//          wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['number']);
-//        }
+        //        if(val instanceof BigInt) {
+        wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['i64']);
+        //        }
+        //        else {
+        //          wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['number']);
+        //        }
         let result = new MgValue(wrappedFun(val));
         return errorOrPushToResourceManager(result);
     }
@@ -628,17 +628,17 @@ export class MgValue {
         return errorOrStopManagingAndPushToResourceManager(result, mgDate);
     }
 
-//    Not supported by memgraph yet.
-//    /**
-//     * Constructs an MgValue holding an MgTime.
-//     * @param {MgTime} mgTime.
-//     * @return {MgValue}.
-//     */
-//    static makeTime(mgTime) {
-//        let wrappedFun = instance.cwrap('mg_value_make_time', 'i32', ['i32']);
-//        let result = new MgValue(wrappedFun(mgTime.transferToWasm()));
-//        return errorOrStopManagingAndPushToResourceManager(result, mgTime);
-//    }
+    //    Not supported by memgraph yet.
+    //    /**
+    //     * Constructs an MgValue holding an MgTime.
+    //     * @param {MgTime} mgTime.
+    //     * @return {MgValue}.
+    //     */
+    //    static makeTime(mgTime) {
+    //        let wrappedFun = instance.cwrap('mg_value_make_time', 'i32', ['i32']);
+    //        let result = new MgValue(wrappedFun(mgTime.transferToWasm()));
+    //        return errorOrStopManagingAndPushToResourceManager(result, mgTime);
+    //    }
 
     /**
      * Constructs an MgValue holding an MgLocalTime.
@@ -651,30 +651,30 @@ export class MgValue {
         let result = new MgValue(wrappedFun(mgLocalTime.transferToWasm()));
         return errorOrStopManagingAndPushToResourceManager(result, mgLocalTime);
     }
-//    Not supported by memgraph yet.
-//    /**
-//     * Constructs an MgValue holding an MgDateTime.
-//     * @param {MgDateTime} mgDateTime.
-//     * @return {MgValue}.
-//     */
-//    static makeDateTime(mgDateTime) {
-//        let wrappedFun =
-//            instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
-//        let result = new MgValue(wrappedFun(mgDateTime.transferToWasm()));
-//        return errorOrStopManagingAndPushToResourceManager(result, mgDateTime);
-//    }
-//
-//    /**
-//     * Constructs an MgValue holding an MgTimeZoneId.
-//     * @param {MgTimeZoneId} mgTimeZoneId.
-//     * @return {MgValue}.
-//     */
-//    static makeTimeZoneId(mgDateTimeZoneId) {
-//        let wrappedFun =
-//            instance.cwrap('mg_value_make_date_time_zone_id', 'i32', ['i32']);
-//        let result = new MgValue(wrappedFun(mgDateTimeZoneId.transferToWasm()));
-//        return errorOrStopManagingAndPushToResourceManager(result, mgDateTimeZoneId);
-//    }
+    //    Not supported by memgraph yet.
+    //    /**
+    //     * Constructs an MgValue holding an MgDateTime.
+    //     * @param {MgDateTime} mgDateTime.
+    //     * @return {MgValue}.
+    //     */
+    //    static makeDateTime(mgDateTime) {
+    //        let wrappedFun =
+    //            instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
+    //        let result = new MgValue(wrappedFun(mgDateTime.transferToWasm()));
+    //        return errorOrStopManagingAndPushToResourceManager(result, mgDateTime);
+    //    }
+    //
+    //    /**
+    //     * Constructs an MgValue holding an MgTimeZoneId.
+    //     * @param {MgTimeZoneId} mgTimeZoneId.
+    //     * @return {MgValue}.
+    //     */
+    //    static makeTimeZoneId(mgDateTimeZoneId) {
+    //        let wrappedFun =
+    //            instance.cwrap('mg_value_make_date_time_zone_id', 'i32', ['i32']);
+    //        let result = new MgValue(wrappedFun(mgDateTimeZoneId.transferToWasm()));
+    //        return errorOrStopManagingAndPushToResourceManager(result, mgDateTimeZoneId);
+    //    }
 
     /**
      * Constructs an MgValue holding an MgLocalDateTime.
@@ -698,29 +698,29 @@ export class MgValue {
         let result = new MgValue(wrappedFun(mgDuration.transferToWasm()));
         return errorOrStopManagingAndPushToResourceManager(result, mgDuration);
     }
-//    Not supported by memgraph yet
-//    /*
-//     * Constructs an MgValue holding an MgPoint2D.
-//     * @param {MgPoint2D} mgPoint2D.
-//     * @return {MgValue}.
-//     */
-//    static makePoint2d(mgPoint2d) {
-//        let wrappedFun = instance.cwrap('mg_value_make_point_2d', 'i32', ['i32']);
-//        let result = new MgValue(wrappedFun(mgValueMakePoint2d.transferToWasm()));
-//        return errorOrStopManagingAndPushToResourceManager(result);
-//    }
-//
-//    /*
-//     * Constructs an MgValue holding an MgPoint3D.
-//     * @param {MgPoint3D} mgPoint3D.
-//     * @return {MgValue}.
-//     */
-//    static makePoint3d(mgPoint3D) {
-//        let wrappedFun =
-//            instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
-//        let result = new MgValue(wrappedFun(mgPoint3D.transferToWasm()));
-//        return errorOrStopManagingAndPushToResourceManager(result);
-//    }
+    //    Not supported by memgraph yet
+    //    /*
+    //     * Constructs an MgValue holding an MgPoint2D.
+    //     * @param {MgPoint2D} mgPoint2D.
+    //     * @return {MgValue}.
+    //     */
+    //    static makePoint2d(mgPoint2d) {
+    //        let wrappedFun = instance.cwrap('mg_value_make_point_2d', 'i32', ['i32']);
+    //        let result = new MgValue(wrappedFun(mgValueMakePoint2d.transferToWasm()));
+    //        return errorOrStopManagingAndPushToResourceManager(result);
+    //    }
+    //
+    //    /*
+    //     * Constructs an MgValue holding an MgPoint3D.
+    //     * @param {MgPoint3D} mgPoint3D.
+    //     * @return {MgValue}.
+    //     */
+    //    static makePoint3d(mgPoint3D) {
+    //        let wrappedFun =
+    //            instance.cwrap('mg_value_make_date_time', 'i32', ['i32']);
+    //        let result = new MgValue(wrappedFun(mgPoint3D.transferToWasm()));
+    //        return errorOrStopManagingAndPushToResourceManager(result);
+    //    }
 };
 
 export class MgString {
@@ -875,11 +875,10 @@ export class MgMap {
     at(str) {
         let wrappedFun = instance.cwrap('mg_map_at', 'i32', ['i32', 'string']);
         let result;
-        if(str instanceof MgString) {
-          result = wrappedFun(this.#cPtr, str.toString());
-        }
-        else {
-          result = wrappedFun(this.#cPtr, str);
+        if (str instanceof MgString) {
+            result = wrappedFun(this.#cPtr, str.toString());
+        } else {
+            result = wrappedFun(this.#cPtr, str);
         }
         return (result == 0) ? null : new MgValue(result);
     }
@@ -1251,7 +1250,7 @@ export class MgLocalTime {
         let result = new MgLocalTime(wrappedFun(BigInt(nanoseconds)));
         return errorOrPushToResourceManager(result);
     }
-  
+
     nanoseconds() {
         let wrappedFun = instance.cwrap('mg_local_time_nanoseconds', 'i64', ['i32']);
         return wrappedFun(this.#cPtr);
