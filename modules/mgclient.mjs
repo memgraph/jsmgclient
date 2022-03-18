@@ -138,7 +138,7 @@ export class MgValueTypeEnum {
     static MG_VALUE_TYPE_DATE_TIME =
         new MgValueTypeEnum("MG_CALUE_TYPE_DATE_TIME");
     static MG_VALUE_TYPE_DATE_TIME_ZONE_ID =
-        new MgValueTypeEnum("MG_VALUE_TYPE_DATE_TIME");
+        new MgValueTypeEnum("MG_VALUE_TYPE_DATE_TIME_ZONE_ID");
     static MG_VALUE_TYPE_LOCAL_DATE_TIME =
         new MgValueTypeEnum("MG_VALUE_TYPE_LOCAL_DATE_TIME");
     static MG_VALUE_TYPE_DURATION = new MgValueTypeEnum("MG_VALUE_TYPE_DURATION");
