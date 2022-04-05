@@ -1,5 +1,5 @@
 import assert from 'assert';
-import * as mg from '../modules/mgclient.mjs';
+import * as mg from '../../modules/mgclient.mjs';
 
 describe('#Interfaces and memory manager', function() {
     it('', function() {
@@ -13,7 +13,7 @@ describe('#Interfaces and memory manager', function() {
             assert.equal(mg.resourcesTracked(), 1);
 
             //integer
-            let mgValueInt = mg.MgValue.makeInteger(BigInt(10));
+            let mgValueInt = mg.MgValue.makeInteger(10);
             assert.equal(mgValueInt.getInteger(), 10);
             assert.equal(mgValueInt.getFloat(), null);
             assert.equal(mg.resourcesTracked(), 2);

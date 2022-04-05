@@ -1,4 +1,4 @@
-import loadWasmMgclient from "../examples/mgclient.js";
+import loadWasmMgclient from "../mgclient/build/src/mgclient.js";
 
 /**
  *  Simple class that handles WASM resources. Every Mg datatype is allocated internally 
@@ -489,14 +489,8 @@ export class MgValue {
      * @return {MgValue}.
      */
     static makeInteger(val) {
-        let wrappedFun;
-        //        if(val instanceof BigInt) {
-        wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['i64']);
-        //        }
-        //        else {
-        //          wrappedFun = instance.cwrap('mg_value_make_integer', 'i32', ['number']);
-        //        }
-        let result = new MgValue(wrappedFun(val));
+        let wrappedFun = instance.cwrap('mg_value_make_integer', 'i64', ['number']);
+        let result = new MgValue(wrappedFun(BigInt(val)));
         return errorOrPushToResourceManager(result);
     }
 

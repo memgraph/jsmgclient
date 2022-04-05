@@ -1,0 +1,50 @@
+name: Diff
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build_and_test_linux:
+    strategy:
+     matrix:
+        platform: [ubuntu-18.04]
+    runs-on: ${{ matrix.platform }}
+    env:
+      MG_VERSION: "1.4.0"
+    steps:
+      - name: Set up repository
+        uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. `0` indicates all history for all
+          # branches and tags. (default: 1)
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Build mgclient
+        run: |
+          sudo apt install -y gcc-8 g++-8
+          
+          cd mgclient
+          mkdir build
+          cd build
+          cmake .. -DWASM=ON
+
+      - name: Setup jsmgclient
+        run: |
+          sudo apt install -y curl
+          curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+          source ~/.bashrc
+          nvm install 14
+          nvm use 14
+          npm install
+
+      - name: Run units
+        run: |
+          npm run test
