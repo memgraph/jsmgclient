@@ -32,6 +32,7 @@ jobs:
           mkdir build
           cd build
           cmake .. -DWASM=ON
+          make -j4
 
       - name: Setup jsmgclient
         run: |
@@ -44,6 +45,11 @@ jobs:
           nvm install 17
           nvm use 17
           npm install
+
+      - name: Run unit tests
+        run: |
+          npm run test 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
 
       - name: Cache Memgraph Docker image
         id: cache-memgraph-docker
@@ -63,7 +69,7 @@ jobs:
           docker load -i ~/memgraph/memgraph-docker.tar.gz
           docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
 
-      - name: Run units
+      - name: Run e2e tests
         run: |
-          npm run test 2> tests_output.txt
+          npm run test-e2e 2> tests_output.txt
           ./.github/workflows/check_if_tests_failed.sh
