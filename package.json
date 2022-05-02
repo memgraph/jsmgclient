@@ -7,8 +7,8 @@
     "example": "examples"
   },
   "scripts": {
-    "test-e2e": "find ./test/e2e -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads,experimental-wasm-bigint {} \\;",
-    "test": "find ./test/unit -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads,experimental-wasm-bigint {} \\;"
+    "test-e2e": "find ./test/e2e -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads {} \\;",
+    "test": "find ./test/unit -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads {} \\;"
   },
   "repository": {
     "type": "git",
