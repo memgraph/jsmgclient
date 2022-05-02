@@ -1,4 +1,4 @@
-import loadWasmMgclient from "../mgclient/build/src/mgclient.js";
+import loadWasmMgclient from "../mgclient/build/mgclient.js";
 
 /**
  *  Simple class that handles WASM resources. Every Mg datatype is allocated internally 
