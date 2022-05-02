@@ -1,8 +1,8 @@
 import assert from 'assert';
-import * as mg from '../modules/mgclient.mjs';
+import * as mg from '../../modules/mgclient.mjs';
 import {
     cleanUp
-} from "./common/common.mjs"
+} from "../common/common.mjs"
 
 describe('#MgPath && MgUnboundRelationship', function() {
     it('', function() {
