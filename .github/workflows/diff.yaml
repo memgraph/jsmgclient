@@ -14,7 +14,7 @@ jobs:
         platform: [ubuntu-18.04]
     runs-on: ${{ matrix.platform }}
     env:
-      MG_VERSION: "1.4.0"
+      MG_VERSION: "2.3.0"
     steps:
       - name: Set up repository
         uses: actions/checkout@v3
@@ -45,6 +45,25 @@ jobs:
           nvm use 14
           npm install
 
+      - name: Cache Memgraph Docker image
+        id: cache-memgraph-docker
+        uses: actions/cache@v1
+        with:
+          path: ~/memgraph
+          key: cache-memgraph-v${{ env.MG_VERSION }}-docker-image
+
+      - name: Download Memgraph Docker image
+        if: steps.cache-memgraph-docker.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/memgraph
+          curl -L https://memgraph.com/download/memgraph/v${MG_VERSION}/docker/memgraph-${MG_VERSION}-docker.tar.gz > ~/memgraph/memgraph-docker.tar.gz 
+
+      - name: Load and run Memgraph Docker image
+        run: |
+          docker load -i ~/memgraph/memgraph-docker.tar.gz
+          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
+
       - name: Run units
         run: |
-          npm run test
+          npm run test 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
