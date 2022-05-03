@@ -7,8 +7,8 @@
     "example": "examples"
   },
   "scripts": {
-    "test-e2e": "find ./test/e2e -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads {} \\;",
-    "test": "find ./test/unit -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads {} \\;"
+    "test": "./node_modules/mocha/bin/mocha test/unit --node-option experimental-wasm-threads",
+    "test-e2e": "./node_modules/mocha/bin/mocha test/e2e --node-option experimental-wasm-threads"
   },
   "repository": {
     "type": "git",
@@ -24,7 +24,7 @@
     "ws": "^0.4.32"
   },
   "devDependencies": {
-    "mocha": "^9.2.0",
-    "js-beautify": "^1.14.0"
+    "js-beautify": "^1.14.0",
+    "mocha": "^9.2.2"
   }
 }
