@@ -161,22 +161,21 @@ jobs:
         with:
           name: mgclient
           path: mgclient/build/src
-            #      - uses: actions/setup-node@v3
-            #        with:
-            #          node-version: 16
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
           update: true
           install: git base-devel mingw-w64-${{ matrix.arch }}-toolchain mingw-w64-${{ matrix.arch }}-cmake mingw-w64-${{ matrix.arch }}-openssl
+      - uses: Vampire/setup-wsl@v1
       - name: Run unit tests
-        shell: msys2 {0} # root shell
         run: |
-          pacman -S nodejs npm
           npm install
           npm run test-unit 2> tests_output.txt
-          ./.github/workflows/check_if_tests_failed.sh
-
+          ls
+          bash ./.github/workflows/check_if_tests_failed.sh
           #      - name: Cache Memgraph Docker image
           #        id: cache-memgraph-docker
           #        uses: actions/cache@v1
