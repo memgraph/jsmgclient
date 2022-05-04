@@ -164,12 +164,13 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - uses: Vampire/setup-wsl@v1
+      - uses: msys2/setup-msys2@v2
         with:
-            distribution: Ubuntu-18.04
-
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: git base-devel mingw-w64-${{ matrix.arch }}-toolchain mingw-w64-${{ matrix.arch }}-cmake mingw-w64-${{ matrix.arch }}-openssl
       - name: Run unit tests
-        shell: wsl-bash {0} # root shell
+        shell: msys2 {0} # root shell
         run: |
           npm install
           npm run test-unit 2> tests_output.txt
