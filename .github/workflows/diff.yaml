@@ -185,7 +185,12 @@ jobs:
       - name: Run e2e tests
         run: |
           npm install
-          npm run test-e2e 2> tests_output.txt
+          npm run test-e2e-node 2> tests_output.txt
           ls
           bash ./.github/workflows/check_if_tests_failed.sh
 
+          npm run test-e2e-path 2> tests_output.txt
+          bash ./.github/workflows/check_if_tests_failed.sh
+
+          npm run test-e2e-rel 2> tests_output.txt
+          bash ./.github/workflows/check_if_tests_failed.sh
