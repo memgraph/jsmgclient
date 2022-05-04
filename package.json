@@ -7,8 +7,8 @@
     "example": "examples"
   },
   "scripts": {
-    "test-unit": "node_modules/mocha/bin/mocha test/unit --node-option experimental-wasm-threads",
-    "test-e2e": "node_modules/mocha/bin/mocha test/e2e --node-option experimental-wasm-threads"
+    "test-unit": "npx mocha test/unit --node-option experimental-wasm-threads",
+    "test-e2e": "npx mocha test/e2e --node-option experimental-wasm-threads"
   },
   "repository": {
     "type": "git",
