@@ -176,8 +176,6 @@ jobs:
       - name: Download, install and run Memgraph under WSL
         shell: wsl-bash {0} # root shell
         run: |
-          sudo apt update
-          sudo apt install curl
           mkdir ~/memgraph
           curl -L https://download.memgraph.com/memgraph/v${{matrix.mgversion}}/ubuntu-18.04/memgraph_${{matrix.mgversion}}-community-1_amd64.deb --output ~/memgraph/memgraph-community.deb
           dpkg -i ~/memgraph/memgraph-community.deb
