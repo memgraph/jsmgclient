@@ -151,7 +151,7 @@ jobs:
       matrix:
         platform: [windows-latest]
         include: [
-          { msystem: MINGW64, arch: x86_64, mgversion: "2.3.0" }
+          { msystem: MINGW64, arch: x86_64 }
         ]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -167,17 +167,17 @@ jobs:
       - uses: Vampire/setup-wsl@v1
         with:
             distribution: Ubuntu-18.04
-      - name: Run unit tests
-        run: |
-          npm install
-          npm run test-unit 2> tests_output.txt
-          bash ./.github/workflows/check_if_tests_failed.sh
+              #      - name: Run unit tests
+              #        run: |
+              #          npm install
+              #          npm run test-unit 2> tests_output.txt
+              #          bash ./.github/workflows/check_if_tests_failed.sh
 
       - name: Download, install and run Memgraph under WSL
         shell: wsl-bash {0} # root shell
         run: |
           mkdir ~/memgraph
-          curl -L https://download.memgraph.com/memgraph/v${{matrix.mgversion}}/ubuntu-18.04/memgraph_${{matrix.mgversion}}-community-1_amd64.deb --output ~/memgraph/memgraph-community.deb
+          curl -L https://download.memgraph.com/memgraph/v2.3.0/ubuntu-18.04/memgraph_2.3.0-1_amd64.deb ~/memgraph/memgraph-community.deb
           dpkg -i ~/memgraph/memgraph-community.deb
           nohup /usr/lib/memgraph/memgraph --bolt-port 7687 --bolt-cert-file="" --bolt-key-file="" --data-directory="~/memgraph/data" --storage-properties-on-edges=true --storage-snapshot-interval-sec=0 --storage-wal-enabled=false --storage-recover-on-startup=false --storage-snapshot-on-exit=false --telemetry-enabled=false --log-file='' &
           sleep 1 # Wait for Memgraph a bit.
