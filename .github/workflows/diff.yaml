@@ -169,7 +169,9 @@ jobs:
       - name: Run unit tests
         run: |
           npm install
-          npm run test-unit 2> tests_output.txt
+          npm run test-unit --verbose
+          #2> tests_output.txt
+          #npm run test-e2e 2> tests_output.txt
           ./.github/workflows/check_if_tests_failed.sh
 
           #      - name: Cache Memgraph Docker image
@@ -191,7 +193,6 @@ jobs:
           #          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
           #
           #      - name: Run e2e tests
-          #        shell: wsl-bash {0} # root shell
           #        run: |
           #          npm run test-e2e 2> tests_output.txt
           #          ./.github/workflows/check_if_tests_failed.sh
