@@ -188,13 +188,13 @@ jobs:
       - name: Download Memgraph Docker image
         if: steps.cache-memgraph-docker.outputs.cache-hit != 'true'
         run: |
-          bash mkdir memgraph
-          bash curl -L https://memgraph.com/download/memgraph/v${MG_VERSION}/docker/memgraph-${MG_VERSION}-docker.tar.gz > ~/memgraph/memgraph-docker.tar.gz 
+          mkdir memgraph
+          curl -L https://memgraph.com/download/memgraph/v${MG_VERSION}/docker/memgraph-${MG_VERSION}-docker.tar.gz > ~/memgraph/memgraph-docker.tar.gz 
 
       - name: Load and run Memgraph Docker image
         run: |
-          bash docker load -i memgraph/memgraph-docker.tar.gz
-          bash docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
+          docker load -i memgraph/memgraph-docker.tar.gz
+          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
 
       - name: Run e2e tests
         run: |
