@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test-unit": "npx mocha test/unit --node-option experimental-wasm-threads",
+    "test-e2e-all": "npx mocha test/e2e --node-option experimental-wasm-threads",
     "test-e2e-node": "npx mocha test/e2e/mg_node_e2e.mjs --node-option experimental-wasm-threads",
     "test-e2e-path": "npx mocha test/e2e/mg_path_e2e.mjs --node-option experimental-wasm-threads",
     "test-e2e-rel": "npx mocha test/e2e/mg_rel_e2e.mjs --node-option experimental-wasm-threads"
