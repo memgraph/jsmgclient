@@ -66,8 +66,8 @@ jobs:
 
       - name: Load and run Memgraph Docker image
         run: |
-          docker load -i ~/memgraph/memgraph-docker.tar.gz
-          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
+          sudo docker load -i ~/memgraph/memgraph-docker.tar.gz
+          sudo docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
 
       - name: Run e2e tests
         run: |
@@ -98,6 +98,7 @@ jobs:
           cd build
           cmake .. -DWASM=ON
           make -j4
+          cd ../../
 
       - name: Setup jsmgclient
         run: |
