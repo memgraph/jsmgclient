@@ -132,7 +132,7 @@ jobs:
       - name: Load and run Memgraph Docker image
         run: |
           docker load -i ~/memgraph/memgraph-docker.tar.gz
-          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
+          docker run -d --network=host memgraph --telemetry-enabled=false
 
       - name: Run e2e tests
         run: |
