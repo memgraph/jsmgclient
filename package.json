@@ -1,0 +1,33 @@
+{
+  "name": "jsmgclient",
+  "version": "0.0.1",
+  "description": "Memgraph database adapter for JavaScript",
+  "main": "",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test-unit": "npx mocha test/unit --node-option experimental-wasm-threads",
+    "test-e2e-all": "find ./test/e2e -maxdepth 1 -type f -exec mocha --node-option experimental-wasm-threads {} \\;",
+    "test-e2e-node": "npx mocha test/e2e/mg_node_e2e.mjs --node-option experimental-wasm-threads",
+    "test-e2e-path": "npx mocha test/e2e/mg_path_e2e.mjs --node-option experimental-wasm-threads",
+    "test-e2e-rel": "npx mocha test/e2e/mg_rel_e2e.mjs --node-option experimental-wasm-threads"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memgraph/jsmgclient.git"
+  },
+  "author": "Memgraph Contributors <tech@memgraph.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/memgraph/jsmgclient/issues"
+  },
+  "homepage": "https://github.com/memgraph/jsmgclient#readme",
+  "dependencies": {
+    "ws": "^0.4.32"
+  },
+  "devDependencies": {
+    "js-beautify": "^1.14.0",
+    "mocha": "^9.2.2"
+  }
+}
