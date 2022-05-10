@@ -1,0 +1,141 @@
+name: Diff
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build_and_test_ubuntu_18_04:
+    strategy:
+     matrix:
+        platform: [ubuntu-18.04]
+    runs-on: ${{ matrix.platform }}
+    env:
+      MG_VERSION: "2.3.0"
+    steps:
+      - name: Set up repository
+        uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. `0` indicates all history for all
+          # branches and tags. (default: 1)
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Build mgclient
+        run: |
+          sudo apt install -y gcc-8 g++-8
+          
+          cd mgclient
+          mkdir build
+          cd build
+          cmake .. -DWASM=ON
+          make -j4
+
+      - name: Setup jsmgclient
+        run: |
+          sudo apt install -y curl
+          curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+          nvm install 17
+          nvm use 17
+          npm install
+
+      - name: Run unit tests
+        run: |
+          npm run test-unit 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
+
+      - name: Cache Memgraph Docker image
+        id: cache-memgraph-docker
+        uses: actions/cache@v1
+        with:
+          path: ~/memgraph
+          key: cache-memgraph-v${{ env.MG_VERSION }}-docker-image
+
+      - name: Download Memgraph Docker image
+        if: steps.cache-memgraph-docker.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/memgraph
+          curl -L https://memgraph.com/download/memgraph/v${MG_VERSION}/docker/memgraph-${MG_VERSION}-docker.tar.gz > ~/memgraph/memgraph-docker.tar.gz 
+
+      - name: Load and run Memgraph Docker image
+        run: |
+          docker load -i ~/memgraph/memgraph-docker.tar.gz
+          docker run -d -p 7687:7687 memgraph --telemetry-enabled=false
+
+      - name: Run e2e tests
+        run: |
+          npm run test-e2e-all 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
+
+
+  build_and_test_ubuntu_20_04:
+    strategy:
+     matrix:
+        platform: [ubuntu-20.04]
+    runs-on: ${{ matrix.platform }}
+    env:
+      MG_VERSION: "2.3.0"
+    steps:
+      - name: Set up repository
+        uses: actions/checkout@v3
+        with:
+          # Number of commits to fetch. `0` indicates all history for all
+          # branches and tags. (default: 1)
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Build mgclient
+        run: |
+          cd mgclient
+          mkdir build
+          cd build
+          cmake .. -DWASM=ON
+          make -j4
+          cd ../../
+
+      - name: Setup jsmgclient
+        run: |
+          sudo apt install -y curl
+          curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+          source ~/.bashrc
+          nvm install 17
+          nvm use 17
+          npm install
+
+      - name: Run unit tests
+        run: |
+          npm run test-unit 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
+
+      - name: Cache Memgraph Docker image
+        id: cache-memgraph-docker
+        uses: actions/cache@v1
+        with:
+          path: ~/memgraph
+          key: cache-memgraph-v${{ env.MG_VERSION }}-docker-image
+
+      - name: Download Memgraph Docker image
+        if: steps.cache-memgraph-docker.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/memgraph
+          curl -L https://memgraph.com/download/memgraph/v${MG_VERSION}/docker/memgraph-${MG_VERSION}-docker.tar.gz > ~/memgraph/memgraph-docker.tar.gz 
+
+      - name: Load and run Memgraph Docker image
+        run: |
+          docker load -i ~/memgraph/memgraph-docker.tar.gz
+          docker run -d --network=host memgraph --telemetry-enabled=false
+
+      - name: Run e2e tests
+        run: |
+          npm run test-e2e-all 2> tests_output.txt
+          ./.github/workflows/check_if_tests_failed.sh
+
