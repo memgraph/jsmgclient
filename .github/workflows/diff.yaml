@@ -48,7 +48,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          npm run test 2> tests_output.txt
+          npm run test-unit 2> tests_output.txt
           ./.github/workflows/check_if_tests_failed.sh
 
       - name: Cache Memgraph Docker image
