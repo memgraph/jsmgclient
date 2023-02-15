@@ -1,6 +1,6 @@
 # jsmgclient
 
-Welcome to memgraph's JavaSript WASM based client adapter.
+Welcome to Memgraph's JavaSript WASM based client adapter.
 
 ## How to build 
 
